@@ -1,0 +1,27 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 079d3e901d814772a329e9e5f8c0e1ff, type: 3}
+  m_Name: Fe_Iron
+  m_EditorClassIdentifier: 
+  symbol: Fe
+  elementName: Iron
+  atomicNumber: 26
+  shellCount: 4
+  valenceElectrons: 2
+  description: Iron is the most commonly used metal on Earth. With 2 valence electrons,
+    it readily forms ions. A key component of steel, and its abundance in Earth's
+    core generates our planet's magnetic field.
+  elementColor: {r: 0.75, g: 0.31, b: 0.13, a: 1}
+  foundInBiomes:
+  - Caverns
+  - Wasteland
+  prerequisiteSymbols: []
