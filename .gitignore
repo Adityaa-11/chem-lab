@@ -18,3 +18,9 @@ UserSettings/
 *.mdb
 *.opendb
 *.opendb.meta
+.vs/
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+crashlytics-build.properties
