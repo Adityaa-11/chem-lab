@@ -538,9 +538,93 @@ public class BuildCaveWorld
         if (p.GetComponent<PlayerInteract>() == null)
             p.AddComponent<PlayerInteract>();
 
-        var camRig = AssetDatabase.LoadAssetAtPath<GameObject>(
+        var camRigPrefab = AssetDatabase.LoadAssetAtPath<GameObject>(
             "Assets/StarterAssets/FirstPersonController/Prefabs/PlayerFollowCamera.prefab");
-        if (camRig != null) PrefabUtility.InstantiatePrefab(camRig);
+        GameObject camRigInstance = null;
+        if (camRigPrefab != null)
+            camRigInstance = (GameObject)PrefabUtility.InstantiatePrefab(camRigPrefab);
+
+        // Wire Cinemachine vcam's Follow target to the player's head transform.
+        // Without this, the vcam sits at its prefab's origin and the Play view
+        // looks third-person (or doesn't track the player at all).
+        WireCinemachineToPlayer(camRigInstance, p);
+
+        // Cinemachine needs a CinemachineBrain on the rendering Main Camera
+        // to drive its vcam. The default scene's Main Camera doesn't have one.
+        EnsureCinemachineBrainOnMainCamera();
+    }
+
+    static void WireCinemachineToPlayer(GameObject camRig, GameObject player)
+    {
+        if (camRig == null || player == null) return;
+
+        // Find the FPS camera anchor — StarterAssets convention: PlayerCameraRoot
+        Transform cameraRoot = null;
+        foreach (var t in player.GetComponentsInChildren<Transform>(true))
+        {
+            if (t.name == "PlayerCameraRoot") { cameraRoot = t; break; }
+        }
+        if (cameraRoot == null)
+        {
+            Debug.LogWarning("[ChemGame] PlayerCameraRoot not found under PlayerCapsule. Wire the vcam target manually.");
+            return;
+        }
+
+        // Find the Cinemachine camera component (CM 3: CinemachineCamera, CM 2: CinemachineVirtualCamera).
+        Component vcam = null;
+        foreach (var c in camRig.GetComponentsInChildren<Component>(true))
+        {
+            if (c == null) continue;
+            var n = c.GetType().Name;
+            if (n == "CinemachineCamera" || n == "CinemachineVirtualCamera") { vcam = c; break; }
+        }
+        if (vcam == null)
+        {
+            Debug.LogWarning("[ChemGame] No CinemachineCamera component on PlayerFollowCamera.");
+            return;
+        }
+
+        // Try common property paths across CM versions.
+        var so = new SerializedObject(vcam);
+        string[] paths = { "Target.TrackingTarget", "m_Target.TrackingTarget", "Follow", "m_Follow" };
+        foreach (var path in paths)
+        {
+            var prop = so.FindProperty(path);
+            if (prop != null && prop.propertyType == SerializedPropertyType.ObjectReference)
+            {
+                prop.objectReferenceValue = cameraRoot;
+                so.ApplyModifiedPropertiesWithoutUndo();
+                Debug.Log($"[ChemGame] Wired Cinemachine '{path}' → {cameraRoot.name}");
+                return;
+            }
+        }
+        Debug.LogWarning("[ChemGame] Could not locate Follow / Tracking Target property on CinemachineCamera. Drag PlayerCameraRoot into the vcam's Tracking Target field manually.");
+    }
+
+    static void EnsureCinemachineBrainOnMainCamera()
+    {
+        var mainCam = Camera.main;
+        if (mainCam == null)
+        {
+            var cams = Object.FindObjectsByType<Camera>(FindObjectsSortMode.None);
+            if (cams.Length > 0) mainCam = cams[0];
+        }
+        if (mainCam == null) return;
+
+        var brainType =
+            System.Type.GetType("Unity.Cinemachine.CinemachineBrain, Unity.Cinemachine") ??
+            System.Type.GetType("Cinemachine.CinemachineBrain, Cinemachine");
+        if (brainType == null)
+        {
+            Debug.LogWarning("[ChemGame] CinemachineBrain type not found. Is the Cinemachine package installed?");
+            return;
+        }
+
+        if (mainCam.GetComponent(brainType) == null)
+        {
+            mainCam.gameObject.AddComponent(brainType);
+            Debug.Log("[ChemGame] Added CinemachineBrain to Main Camera");
+        }
     }
 
     static void PlaceNPCSpawner()
