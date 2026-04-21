@@ -262,7 +262,20 @@ public class BuildCaveWorld
         light.range = 22f;
         light.intensity = 2.8f;
         light.color = new Color(1f, 0.9f, 0.7f);
-        go.transform.position = new Vector3(0f, 9f, 0f);
+
+        // Parent to the player so the light moves with them. If the player
+        // prefab was missing (logged as a warning earlier), fall back to a
+        // world-space position so the scene still has some illumination.
+        var player = GameObject.FindGameObjectWithTag("Player");
+        if (player != null)
+        {
+            go.transform.SetParent(player.transform, false);
+            go.transform.localPosition = new Vector3(0f, 1.6f, 0.2f); // head height, slight forward offset
+        }
+        else
+        {
+            go.transform.position = new Vector3(0f, 9f, 0f);
+        }
     }
 
     // ========================= CEILING (inverted dome) =========================
