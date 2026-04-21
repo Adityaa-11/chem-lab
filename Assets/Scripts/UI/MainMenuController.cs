@@ -11,12 +11,14 @@ public class MainMenuController : MonoBehaviour
 
     private void Start()
     {
+        Cursor.lockState = CursorLockMode.None;
+        Cursor.visible = true;
         if (researchButton != null)
             researchButton.onClick.AddListener(() => SceneManager.LoadScene("ResearchTree"));
         if (periodicTableButton != null)
             periodicTableButton.onClick.AddListener(() => SceneManager.LoadScene("PeriodicTable"));
         if (exploreButton != null)
-            exploreButton.onClick.AddListener(() => SceneManager.LoadScene("Explore"));
+            exploreButton.onClick.AddListener(() => SceneManager.LoadScene("WorldSelect"));
         if (constructButton != null)
             constructButton.onClick.AddListener(() => SceneManager.LoadScene("Construction"));
     }

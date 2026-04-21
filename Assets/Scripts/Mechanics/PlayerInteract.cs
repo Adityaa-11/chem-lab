@@ -3,7 +3,11 @@ using UnityEngine;
 public class PlayerInteract : MonoBehaviour
 {
     public float range = 4f;
-
+    void Start()
+    {
+        Cursor.lockState = CursorLockMode.Locked;
+        Cursor.visible = false;
+    }
     void Update()
     {
         if (Input.GetMouseButtonDown(0))
