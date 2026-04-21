@@ -7,6 +7,10 @@ public class WorldSelect : MonoBehaviour
     {
         SceneManager.LoadScene("ForestWorld");
     }
+    public void Cave()
+    {
+        SceneManager.LoadScene("CaveWorld");
+    }
     public void Back()
     {
         SceneManager.LoadScene("MainMenu");
