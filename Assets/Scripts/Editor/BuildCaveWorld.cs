@@ -136,13 +136,27 @@ public class BuildCaveWorld
 
     static Material EnsureRockMaterial()
     {
-        // If an old version exists, delete it — it might reference a broken
-        // shader from an earlier run.
+        Debug.Log("[DIAG] EnsureRockMaterial begin");
+
         if (AssetDatabase.LoadAssetAtPath<Material>(RockMaterialPath) != null)
+        {
+            Debug.Log($"[DIAG] Deleting existing {RockMaterialPath}");
             AssetDatabase.DeleteAsset(RockMaterialPath);
+        }
 
         var mat = CreateURPLitMaterial("CaveRock", new Color(0.42f, 0.42f, 0.44f));
+        Debug.Log($"[DIAG] After CreateURPLitMaterial: mat.shader.name='{mat.shader?.name ?? "NULL"}', mat.shader==null? {mat.shader == null}");
+        Debug.Log($"[DIAG]   mat.color={mat.color}, HasProp _BaseColor={mat.HasProperty("_BaseColor")}, _Color={mat.HasProperty("_Color")}");
+        Debug.Log($"[DIAG]   enabled keywords: [{string.Join(", ", mat.shaderKeywords)}]");
+        Debug.Log($"[DIAG]   passes enabled: {mat.passCount} total");
+
         AssetDatabase.CreateAsset(mat, RockMaterialPath);
+        AssetDatabase.SaveAssets();
+
+        var loaded = AssetDatabase.LoadAssetAtPath<Material>(RockMaterialPath);
+        Debug.Log($"[DIAG] After save+reload: loaded.shader.name='{loaded?.shader?.name ?? "NULL"}', loaded.shader==null? {loaded?.shader == null}");
+        Debug.Log($"[DIAG]   loaded.color={loaded?.color}");
+
         return mat;
     }
 
@@ -191,6 +205,8 @@ public class BuildCaveWorld
 
     static GameObject[] MakeRockPrefabs(Material rockMat)
     {
+        Debug.Log($"[DIAG] MakeRockPrefabs begin. rockMat arg: shader='{rockMat?.shader?.name ?? "NULL"}', name='{rockMat?.name}'");
+
         var prefabs = new GameObject[4];
         Vector3[] scales = {
             new Vector3(1.3f, 0.7f, 1.1f),
@@ -207,15 +223,28 @@ public class BuildCaveWorld
             var go = GameObject.CreatePrimitive(types[i]);
             go.name = $"Rock_{i + 1:00}";
             go.transform.localScale = scales[i];
-            go.GetComponent<MeshRenderer>().sharedMaterial = rockMat;
+
+            var mr = go.GetComponent<MeshRenderer>();
+            Debug.Log($"[DIAG] Rock_{i + 1:00}: primitive created. Default MR material shader='{mr.sharedMaterial?.shader?.name ?? "NULL"}'");
+
+            mr.sharedMaterial = rockMat;
+            Debug.Log($"[DIAG]   after assign: MR.sharedMaterial.shader='{mr.sharedMaterial?.shader?.name ?? "NULL"}', same instance as rockMat? {ReferenceEquals(mr.sharedMaterial, rockMat)}");
+
             go.AddComponent<Rock>();
 
             string path = $"{RocksFolder}/Rock_{i + 1:00}.prefab";
             if (AssetDatabase.LoadAssetAtPath<GameObject>(path) != null)
                 AssetDatabase.DeleteAsset(path);
             prefabs[i] = PrefabUtility.SaveAsPrefabAsset(go, path);
+
+            // Reload the saved prefab and inspect what actually got written.
+            var reloaded = AssetDatabase.LoadAssetAtPath<GameObject>(path);
+            var reloadedMR = reloaded?.GetComponent<MeshRenderer>();
+            Debug.Log($"[DIAG]   saved prefab reloaded: MR.sharedMaterial='{reloadedMR?.sharedMaterial?.name ?? "NULL"}' shader='{reloadedMR?.sharedMaterial?.shader?.name ?? "NULL"}'");
+
             Object.DestroyImmediate(go);
         }
+        Debug.Log("[DIAG] MakeRockPrefabs end");
         return prefabs;
     }
 
