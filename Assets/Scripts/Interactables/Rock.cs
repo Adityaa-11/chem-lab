@@ -1,7 +1,11 @@
 using UnityEngine;
 
-public class Rock : MonoBehaviour
+public class Rock : MonoBehaviour, IInteractable
 {
+    public void Interact()
+    {
+        Zap();
+    }
     public void Zap()
     {
         GameObject player = GameObject.FindGameObjectWithTag("Player");

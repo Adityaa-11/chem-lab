@@ -3,11 +3,11 @@ using UnityEngine.SceneManagement;
 
 public class BatterySystem : MonoBehaviour
 {
-    public float maxBattery = 1000f;
+    public float maxBattery = 10000f;
     public float currentBattery;
 
     public float drainRate = 2f;        // slow passive drain
-    public float zapCost = 60f;         // COST per zap
+    public float zapCost = 25f;         // COST per zap
 
     void Start()
     {

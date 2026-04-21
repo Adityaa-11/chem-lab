@@ -3,42 +3,40 @@ using UnityEngine;
 public class PlayerInteract : MonoBehaviour
 {
     public float range = 4f;
+
     void Start()
     {
         Cursor.lockState = CursorLockMode.Locked;
         Cursor.visible = false;
     }
+
     void Update()
     {
-        if (Input.GetMouseButtonDown(0))
+        if (!Input.GetMouseButtonDown(0))
+            return;
+
+        Ray ray = new Ray(Camera.main.transform.position, Camera.main.transform.forward);
+
+        if (Physics.Raycast(ray, out RaycastHit hit, range))
         {
-            Ray ray = new Ray(Camera.main.transform.position, Camera.main.transform.forward);
+            IInteractable interactable = hit.collider.GetComponent<IInteractable>();
 
-            if (Physics.Raycast(ray, out RaycastHit hit, range))
+            if (interactable != null)
             {
-                Tree tree = hit.collider.GetComponent<Tree>();
+                interactable.Interact();
+                return;
+            }
 
-                if (tree != null)
-                {
-                    tree.Zap();
-                    return;
-                }
-
-                Rock rock = hit.collider.GetComponent<Rock>();
-
-                if (rock != null)
-                {
-                    rock.Zap();
-                    return;
-                }
-
-                Chemist chemist = hit.collider.GetComponentInParent<Chemist>();
-
-                if (chemist != null)
-                {
-                    chemist.Talk();
-                }
+            Chemist chemist = hit.collider.GetComponentInParent<Chemist>();
+            if (chemist != null)
+            {
+                chemist.Talk();
             }
         }
     }
+}
+
+public interface IInteractable
+{
+    void Interact();
 }
