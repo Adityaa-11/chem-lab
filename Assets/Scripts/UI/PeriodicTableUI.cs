@@ -2,6 +2,7 @@ using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
 using UnityEngine.SceneManagement;
+using System.Collections;
 
 public class PeriodicTableUI : MonoBehaviour
 {
@@ -45,15 +46,27 @@ public class PeriodicTableUI : MonoBehaviour
     private void Start()
     {
         if (popup != null) popup.SetActive(false);
-        if (popupClose != null) popupClose.onClick.AddListener(() => popup.SetActive(false));
+        if (popupClose != null) popupClose.onClick.AddListener(ClosePopup);
         if (backButton != null) backButton.onClick.AddListener(() => SceneManager.LoadScene("MainMenu"));
-        UpdateRP();
+
+        // Wait a frame for GameState to initialize
+        StartCoroutine(DelayedBuild());
+    }
+
+    private IEnumerator DelayedBuild()
+    {
+        yield return null; // wait one frame
         BuildTable();
+        UpdateRP();
     }
 
     private void BuildTable()
     {
         if (gridParent == null || cellPrefab == null) return;
+
+        // Clear any existing children first
+        for (int i = gridParent.childCount - 1; i >= 0; i--)
+            Destroy(gridParent.GetChild(i).gameObject);
 
         int rows = layout.GetLength(0);
         int cols = layout.GetLength(1);
@@ -64,16 +77,17 @@ public class PeriodicTableUI : MonoBehaviour
             {
                 int z = layout[r, c];
                 var cell = Instantiate(cellPrefab, gridParent);
+                cell.SetActive(true);
 
                 var img = cell.GetComponent<Image>();
-                var texts = cell.GetComponentsInChildren<TextMeshProUGUI>();
+                var texts = cell.GetComponentsInChildren<TextMeshProUGUI>(true);
                 TextMeshProUGUI zText = texts.Length > 0 ? texts[0] : null;
                 TextMeshProUGUI symText = texts.Length > 1 ? texts[1] : null;
                 var btn = cell.GetComponent<Button>();
 
                 if (z == 0)
                 {
-                    img.color = Color.clear;
+                    if (img != null) img.color = Color.clear;
                     if (zText != null) zText.text = "";
                     if (symText != null) symText.text = "";
                     if (btn != null) btn.interactable = false;
@@ -84,21 +98,30 @@ public class PeriodicTableUI : MonoBehaviour
                 if (zText != null) zText.text = z.ToString();
                 if (symText != null) symText.text = sym;
 
-                bool researched = GameState.Instance != null && GameState.Instance.IsResearched(sym);
+                // Only highlight if GameState exists AND element is researched
+                bool researched = false;
+                if (GameState.Instance != null)
+                    researched = GameState.Instance.IsResearched(sym);
 
                 if (researched)
                 {
-                    img.color = new Color(0.06f, 0.46f, 0.32f, 0.3f);
+                    if (img != null)
+                    {
+                        img.color = new Color(0.06f, 0.46f, 0.32f, 0.3f);
+                        // Add a visible border by making the element stand out
+                    }
                     if (btn != null)
                     {
                         btn.interactable = true;
-                        string captured = sym;
-                        btn.onClick.AddListener(() => ShowPopup(captured));
+                        // Capture sym in local variable for the lambda
+                        string capturedSym = sym;
+                        btn.onClick.RemoveAllListeners();
+                        btn.onClick.AddListener(() => ShowPopup(capturedSym));
                     }
                 }
                 else
                 {
-                    img.color = new Color(0.1f, 0.13f, 0.21f, 1f);
+                    if (img != null) img.color = new Color(0.1f, 0.13f, 0.21f, 1f);
                     if (btn != null) btn.interactable = false;
                 }
             }
@@ -107,14 +130,34 @@ public class PeriodicTableUI : MonoBehaviour
 
     private void ShowPopup(string sym)
     {
-        var el = GameState.Instance?.GetElement(sym);
-        if (el == null || popup == null) return;
+        if (GameState.Instance == null) return;
+
+        var el = GameState.Instance.GetElement(sym);
+        if (el == null)
+        {
+            Debug.LogWarning($"No ElementData found for symbol: {sym}");
+            return;
+        }
+
+        if (popup == null)
+        {
+            Debug.LogWarning("Popup reference is null");
+            return;
+        }
 
         popup.SetActive(true);
+
         if (popupTitle != null) popupTitle.text = $"{el.elementName} ({el.symbol})";
         if (popupDesc != null) popupDesc.text = el.description;
         if (popupShells != null) popupShells.text = $"Electron shells: {el.shellCount}";
         if (popupValence != null) popupValence.text = $"Valence electrons: {el.valenceElectrons}";
+
+        Debug.Log($"Showing popup for {sym}");
+    }
+
+    private void ClosePopup()
+    {
+        if (popup != null) popup.SetActive(false);
     }
 
     private void UpdateRP()
