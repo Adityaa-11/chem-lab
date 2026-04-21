@@ -1,7 +1,11 @@
 using UnityEngine;
 
-public class Tree : MonoBehaviour
+public class Tree : MonoBehaviour, IInteractable
 {
+    public void Interact()
+    {
+        Zap();
+    }
     public void Zap()
     {
         GameObject player = GameObject.FindGameObjectWithTag("Player");
@@ -15,7 +19,7 @@ public class Tree : MonoBehaviour
 
         if (inv != null)
         {
-            int rolls = Random.Range(5, 8); // 5–7 rolls
+            int rolls = Random.Range(2, 5); // 2-4 rolls
 
             for (int i = 0; i < rolls; i++)
             {
