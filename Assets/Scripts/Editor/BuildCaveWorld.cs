@@ -12,6 +12,8 @@ public class BuildCaveWorld
     const string RocksFolder = "Assets/Prefabs/Rocks";
     const string RockMaterialPath = "Assets/Materials/CaveRock.mat";
     const string TerrainMaterialPath = "Assets/Materials/CaveTerrain.mat";
+    const string TerrainLayerPath = "Assets/Terrains/CaveTerrainLayer.terrainlayer";
+    const string TerrainTexturePath = "Assets/Terrains/CaveTerrainTex.png";
     const string CeilingMeshPath = "Assets/Meshes/CaveCeiling.mesh";
     const string StalactiteMeshPath = "Assets/Meshes/Stalactite.mesh";
 
@@ -134,7 +136,13 @@ public class BuildCaveWorld
     {
         if (m == null) { Debug.Log($"[DIAG] {label}: material is NULL"); return; }
         DumpShader(label + ".shader", m.shader);
-        Debug.Log($"[DIAG] {label}: name='{m.name}', color={m.color}, renderQueue={m.renderQueue}");
+
+        // Avoid Material.color warning on shaders that don't expose _Color.
+        string colorStr = "N/A";
+        if (m.HasProperty("_BaseColor")) colorStr = m.GetColor("_BaseColor").ToString();
+        else if (m.HasProperty("_Color")) colorStr = m.GetColor("_Color").ToString();
+
+        Debug.Log($"[DIAG] {label}: name='{m.name}', color={colorStr}, renderQueue={m.renderQueue}");
         Debug.Log($"[DIAG] {label}: hasProp _BaseColor={m.HasProperty("_BaseColor")}, _Color={m.HasProperty("_Color")}, _MainTex={m.HasProperty("_MainTex")}, _BaseMap={m.HasProperty("_BaseMap")}");
         Debug.Log($"[DIAG] {label}: shaderKeywords=[{string.Join(", ", m.shaderKeywords)}], passCount={m.passCount}");
         Debug.Log($"[DIAG] {label}: assetPath='{AssetDatabase.GetAssetPath(m)}'");
@@ -273,6 +281,10 @@ public class BuildCaveWorld
         }
         td.SetHeights(0, 0, heights);
 
+        // URP Terrain/Lit shader requires at least one TerrainLayer to sample
+        // from; without one the terrain renders magenta.
+        td.terrainLayers = new[] { EnsureTerrainLayer() };
+
         Debug.Log($"[DIAG] TerrainData created. size={td.size}, heightmapResolution={td.heightmapResolution}, terrainLayers.Length={td.terrainLayers?.Length ?? 0}");
 
         if (AssetDatabase.LoadAssetAtPath<TerrainData>(TerrainDataPath) != null)
@@ -367,6 +379,42 @@ public class BuildCaveWorld
         DumpMaterial("terrainMat (reloaded from disk)", loaded);
 
         return mat;
+    }
+
+    static TerrainLayer EnsureTerrainLayer()
+    {
+        if (AssetDatabase.LoadAssetAtPath<TerrainLayer>(TerrainLayerPath) != null)
+            AssetDatabase.DeleteAsset(TerrainLayerPath);
+
+        var tex = EnsureTerrainTexture();
+        var layer = new TerrainLayer
+        {
+            diffuseTexture = tex,
+            tileSize = new Vector2(8f, 8f)
+        };
+        AssetDatabase.CreateAsset(layer, TerrainLayerPath);
+        return layer;
+    }
+
+    static Texture2D EnsureTerrainTexture()
+    {
+        var existing = AssetDatabase.LoadAssetAtPath<Texture2D>(TerrainTexturePath);
+        if (existing != null) return existing;
+
+        const int size = 32;
+        var tex = new Texture2D(size, size, TextureFormat.RGB24, false);
+        var pixels = new Color[size * size];
+        for (int y = 0; y < size; y++)
+            for (int x = 0; x < size; x++)
+            {
+                float n = (Mathf.PerlinNoise(x * 0.25f, y * 0.25f) - 0.5f) * 0.08f;
+                pixels[y * size + x] = new Color(0.33f + n, 0.33f + n, 0.35f + n);
+            }
+        tex.SetPixels(pixels);
+        tex.Apply();
+        File.WriteAllBytes(TerrainTexturePath, tex.EncodeToPNG());
+        AssetDatabase.ImportAsset(TerrainTexturePath);
+        return AssetDatabase.LoadAssetAtPath<Texture2D>(TerrainTexturePath);
     }
 
     // Find URP Lit reliably. Tries five strategies because individual ones
