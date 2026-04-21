@@ -1,0 +1,29 @@
+using UnityEngine;
+using UnityEngine.UI;
+using UnityEngine.SceneManagement;
+
+public class MainMenuController : MonoBehaviour
+{
+    [SerializeField] private Button researchButton;
+    [SerializeField] private Button periodicTableButton;
+    [SerializeField] private Button exploreButton;
+    [SerializeField] private Button constructButton;
+    [SerializeField] private Button compendiumButton;
+    [SerializeField] private Button quitButton;
+
+    private void Start()
+    {
+        if (researchButton != null)
+            researchButton.onClick.AddListener(() => SceneManager.LoadScene("ResearchTree"));
+        if (periodicTableButton != null)
+            periodicTableButton.onClick.AddListener(() => SceneManager.LoadScene("PeriodicTable"));
+        if (exploreButton != null)
+            exploreButton.onClick.AddListener(() => SceneManager.LoadScene("WorldSelect"));
+        if (constructButton != null)
+            constructButton.onClick.AddListener(() => SceneManager.LoadScene("Construct"));
+        if (compendiumButton != null)
+            compendiumButton.onClick.AddListener(() => SceneManager.LoadScene("Compendium"));
+        if (quitButton != null)
+            quitButton.onClick.AddListener(() => Application.Quit());
+    }
+}

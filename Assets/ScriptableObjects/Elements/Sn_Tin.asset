@@ -1,0 +1,28 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 079d3e901d814772a329e9e5f8c0e1ff, type: 3}
+  m_Name: Sn_Tin
+  m_EditorClassIdentifier: 
+  symbol: Sn
+  elementName: Tin
+  atomicNumber: 50
+  shellCount: 5
+  valenceElectrons: 4
+  description: Tin is a soft, malleable metal with a relatively low melting point,
+    commonly used in alloys. Resistant to oxidation, historically used to coat other
+    metals to prevent rusting.
+  elementColor: {r: 0.66, g: 0.66, b: 0.69, a: 1}
+  foundInBiomes:
+  - Caverns
+  - Wasteland
+  prerequisiteSymbols:
+  - Fe
