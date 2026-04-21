@@ -91,6 +91,8 @@ public class BuildCaveWorld
         }
         td.SetHeights(0, 0, heights);
 
+        Debug.Log($"[DIAG] TerrainData created. size={td.size}, heightmapResolution={td.heightmapResolution}, terrainLayers.Length={td.terrainLayers?.Length ?? 0}");
+
         if (AssetDatabase.LoadAssetAtPath<TerrainData>(TerrainDataPath) != null)
             AssetDatabase.DeleteAsset(TerrainDataPath);
         AssetDatabase.CreateAsset(td, TerrainDataPath);
@@ -101,8 +103,13 @@ public class BuildCaveWorld
         terrainGO.layer = 0;
 
         var terrain = terrainGO.GetComponent<Terrain>();
+        Debug.Log($"[DIAG] After CreateTerrainGameObject: terrain.materialTemplate='{terrain.materialTemplate?.name ?? "NULL"}' shader='{terrain.materialTemplate?.shader?.name ?? "NULL"}'");
+
         var terrainMat = EnsureTerrainMaterial();
         if (terrainMat != null) terrain.materialTemplate = terrainMat;
+
+        Debug.Log($"[DIAG] After materialTemplate assignment: terrain.materialTemplate='{terrain.materialTemplate?.name ?? "NULL"}' shader='{terrain.materialTemplate?.shader?.name ?? "NULL"}'");
+        Debug.Log($"[DIAG] Terrain final state: terrainData.terrainLayers.Length={terrain.terrainData.terrainLayers?.Length ?? 0}, alphamapLayers={terrain.terrainData.alphamapLayers}");
     }
 
     // ========================= ATMOSPHERE =========================
@@ -162,19 +169,36 @@ public class BuildCaveWorld
 
     static Material EnsureTerrainMaterial()
     {
+        Debug.Log("[DIAG] EnsureTerrainMaterial begin");
+
         if (AssetDatabase.LoadAssetAtPath<Material>(TerrainMaterialPath) != null)
+        {
+            Debug.Log($"[DIAG] Deleting existing {TerrainMaterialPath}");
             AssetDatabase.DeleteAsset(TerrainMaterialPath);
+        }
 
         var shader = ShaderLookupHelpers.FindURPTerrainLit();
+        Debug.Log($"[DIAG] FindURPTerrainLit returned: '{shader?.name ?? "NULL"}' (null? {shader == null})");
+
         if (shader == null)
         {
-            Debug.Log("[ChemGame] URP Terrain/Lit not found by any method; using Unity's default terrain material.");
+            Debug.Log("[DIAG] URP Terrain/Lit not found; returning null (Unity will auto-assign default terrain material).");
             return null;
         }
 
         var mat = new Material(shader) { name = "CaveTerrain" };
+        Debug.Log($"[DIAG] Created terrain mat: shader='{mat.shader?.name ?? "NULL"}', color={mat.color}");
+        Debug.Log($"[DIAG]   HasProp _BaseColor={mat.HasProperty("_BaseColor")}, _Color={mat.HasProperty("_Color")}, _MainColor={mat.HasProperty("_MainColor")}");
+        Debug.Log($"[DIAG]   enabled keywords: [{string.Join(", ", mat.shaderKeywords)}]");
+        Debug.Log($"[DIAG]   passCount={mat.passCount}");
+
         SetColor(mat, new Color(0.3f, 0.3f, 0.33f));
         AssetDatabase.CreateAsset(mat, TerrainMaterialPath);
+        AssetDatabase.SaveAssets();
+
+        var loaded = AssetDatabase.LoadAssetAtPath<Material>(TerrainMaterialPath);
+        Debug.Log($"[DIAG] After save+reload: loaded.shader='{loaded?.shader?.name ?? "NULL"}', color={loaded?.color}");
+
         return mat;
     }
 
