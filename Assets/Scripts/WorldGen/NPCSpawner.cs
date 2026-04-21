@@ -23,7 +23,7 @@ public class NPCSpawner : MonoBehaviour
 
         for (int attempt = 0; attempt < maxAttempts; attempt++)
         {
-            Vector3 origin = new Vector3(
+            Vector3 origin = playerPos + new Vector3(
                 Random.Range(-areaSize.x, areaSize.x),
                 200f,
                 Random.Range(-areaSize.y, areaSize.y)

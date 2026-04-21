@@ -10,9 +10,6 @@ public class DialogUI : MonoBehaviour
     GameObject overlay;
     TextMeshProUGUI titleText;
     TextMeshProUGUI bodyText;
-    float prevTimeScale = 1f;
-    CursorLockMode prevLock;
-    bool prevCursorVisible;
 
     public static void Show(string title, string body)
     {
@@ -21,9 +18,6 @@ public class DialogUI : MonoBehaviour
         instance.bodyText.text = body;
         instance.overlay.SetActive(true);
 
-        instance.prevTimeScale = Time.timeScale;
-        instance.prevLock = Cursor.lockState;
-        instance.prevCursorVisible = Cursor.visible;
         Time.timeScale = 0f;
         Cursor.lockState = CursorLockMode.None;
         Cursor.visible = true;
@@ -32,9 +26,9 @@ public class DialogUI : MonoBehaviour
     public void Hide()
     {
         overlay.SetActive(false);
-        Time.timeScale = prevTimeScale;
-        Cursor.lockState = prevLock;
-        Cursor.visible = prevCursorVisible;
+        Time.timeScale = 1f;
+        Cursor.lockState = CursorLockMode.Locked;
+        Cursor.visible = false;
     }
 
     static void EnsureInstance()
