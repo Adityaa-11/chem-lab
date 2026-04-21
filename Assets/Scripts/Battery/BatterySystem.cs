@@ -3,15 +3,17 @@ using UnityEngine.SceneManagement;
 
 public class BatterySystem : MonoBehaviour
 {
-    public float maxBattery = 100f;
+    public float maxBattery = 1000f;
     public float currentBattery;
 
     public float drainRate = 2f;        // slow passive drain
-    public float zapCost = 15f;         // COST per zap
+    public float zapCost = 60f;         // COST per zap
 
     void Start()
     {
         currentBattery = maxBattery;
+        Cursor.lockState = CursorLockMode.Locked;
+        Cursor.visible = false;
     }
 
     void Update()
@@ -35,7 +37,9 @@ public class BatterySystem : MonoBehaviour
     }
 
     void GameOver()
-    {
+    {  
+        Cursor.lockState = CursorLockMode.None;
+        Cursor.visible = true;
         SceneManager.LoadScene("MainMenu");
     }
 }

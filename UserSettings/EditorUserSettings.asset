@@ -5,20 +5,29 @@ EditorUserSettings:
   m_ObjectHideFlags: 0
   serializedVersion: 4
   m_ConfigSettings:
+    GraphicsSettingsInspector_UserSettings:
+      value: 18134705175a055722080a3115371d4a0d55006876786860616b0471b8b07a68ffab74f9ee2a3a30300cea1a11320d0beb1a0c25f7060f494b4cdf1b18f3045e38cb5ad8
+      flags: 0
     RecentlyUsedSceneGuid-0:
       value: 5a5757560101590a5d0c0e24427b5d44434e4c7a7b7a23677f2b4565b7b5353a
       flags: 0
     RecentlyUsedSceneGuid-1:
-      value: 0252550004010f0e0c590f7312705b44464f4a7f292d71617d2c4e60b7b3666d
-      flags: 0
-    RecentlyUsedSceneGuid-2:
       value: 54000d5f5450585a550f0f7544770844404f4b732e7d733674784e35b7b7316b
       flags: 0
-    RecentlyUsedSceneGuid-3:
+    RecentlyUsedSceneGuid-2:
       value: 515304540607500d5d5f0a2148775a444f1649722a2c23672b2c1960b1e66d6d
       flags: 0
-    RecentlyUsedSceneGuid-4:
+    RecentlyUsedSceneGuid-3:
       value: 02000c5207540b0e0b0f5f7716220b4444154b2f7b7a27692e7a186ab4b83661
+      flags: 0
+    RecentlyUsedSceneGuid-4:
+      value: 5300025657010f035b0a592413775a444f4f4e2c2f717661797e4c62bbe56c39
+      flags: 0
+    RecentlyUsedSceneGuid-5:
+      value: 0252550004010f0e0c590f7312705b44464f4a7f292d71617d2c4e60b7b3666d
+      flags: 0
+    RecentlyUsedSceneGuid-6:
+      value: 0553010557500f090e585d7b16270a4446151e797c2c20607d711860b3b6623d
       flags: 0
     vcSharedLogLevel:
       value: 0d5e400f0650
@@ -39,3 +48,4 @@ EditorUserSettings:
   m_VCAllowAsyncUpdate: 1
   m_VCScanLocalPackagesOnConnect: 1
   m_ArtifactGarbageCollection: 1
+  m_CompressAssetsOnImport: 1

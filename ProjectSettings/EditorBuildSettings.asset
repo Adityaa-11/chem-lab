@@ -15,6 +15,18 @@ EditorBuildSettings:
     path: Assets/Scenes/PeriodicTable.unity
     guid: f2f4a2b95bb1841e69df7bd8bf70fd51
   - enabled: 1
+<<<<<<< HEAD
+=======
+    path: Assets/Scenes/CaveWorld.unity
+    guid: fb5c2ef2c619fd540bf30df008e3166e
+  - enabled: 1
+    path: Assets/Scenes/Compendium.unity
+    guid: 016024f86d5fc4e4986fc90147119e8a
+  - enabled: 1
+    path: Assets/Scenes/Construct.unity
+    guid: 9b0e7518c3126ad498a8c71bd867cc7a
+  - enabled: 1
+>>>>>>> f7ae1462ebd8ba5a1a1b7e93e0483dadea54ec22
     path: Assets/Scenes/ForestWorld.unity
     guid: a184bab5fa35fa442b3e72a9c3e968b9
   - enabled: 1

@@ -1,0 +1,27 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 079d3e901d814772a329e9e5f8c0e1ff, type: 3}
+  m_Name: Au_Gold
+  m_EditorClassIdentifier: 
+  symbol: Au
+  elementName: Gold
+  atomicNumber: 79
+  shellCount: 6
+  valenceElectrons: 1
+  description: "Gold is the unreactive noble metal that resists tarnish and rust,
+    prized since antiquity for its luster and conductivity. Rare veins form deep
+    in quartz-rich cave systems \u2014 a lucky find for any prospector."
+  elementColor: {r: 1, g: 0.84, b: 0, a: 1}
+  foundInBiomes:
+  - Caverns
+  prerequisiteSymbols:
+  - Cu
