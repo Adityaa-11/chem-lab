@@ -27,6 +27,8 @@ public class BuildCaveWorld
     [MenuItem("ChemGame/Build Cave World")]
     public static void Build()
     {
+        DumpRenderPipelineEnvironment();
+
         EnsureFolder("Assets/Terrains");
         EnsureFolder(RocksFolder);
         EnsureFolder("Assets/Materials");
@@ -38,6 +40,7 @@ public class BuildCaveWorld
         BuildTerrain();
         SetCaveAtmosphere();
         DimDirectionalLight();
+        DumpAtmosphereState();
 
         var rockMat = EnsureRockMaterial();
         var rockPrefabs = MakeRockPrefabs(rockMat);
@@ -45,6 +48,7 @@ public class BuildCaveWorld
 
         BuildCaveCeiling(rockMat);
         ScatterStalactites(rockMat);
+        DumpCeilingAndStalactites();
 
         PlaceGameManager();
         PlaceInventorySystem();
@@ -56,7 +60,123 @@ public class BuildCaveWorld
         EditorSceneManager.SaveScene(scene, ScenePath);
         AssetDatabase.SaveAssets();
         AssetDatabase.Refresh();
+
+        DumpFinalSceneState();
         Debug.Log($"[ChemGame] Built CaveWorld at {ScenePath}");
+    }
+
+    // ========================= DIAGNOSTICS =========================
+
+    static void DumpRenderPipelineEnvironment()
+    {
+        Debug.Log("[DIAG] ===== RENDER PIPELINE ENVIRONMENT =====");
+        Debug.Log($"[DIAG] Unity version: {Application.unityVersion}");
+        Debug.Log($"[DIAG] GraphicsSettings.currentRenderPipeline = '{GraphicsSettings.currentRenderPipeline?.GetType().Name ?? "NULL"}'");
+        Debug.Log($"[DIAG] GraphicsSettings.defaultRenderPipeline = '{GraphicsSettings.defaultRenderPipeline?.GetType().Name ?? "NULL"}' (name='{GraphicsSettings.defaultRenderPipeline?.name ?? "NULL"}')");
+        Debug.Log($"[DIAG] QualitySettings.activeQualityLevel = {QualitySettings.GetQualityLevel()}");
+        Debug.Log($"[DIAG] QualitySettings.renderPipeline = '{QualitySettings.renderPipeline?.GetType().Name ?? "NULL"}' (name='{QualitySettings.renderPipeline?.name ?? "NULL"}')");
+
+        var rp = GraphicsSettings.defaultRenderPipeline;
+        if (rp != null)
+        {
+            Debug.Log($"[DIAG] defaultRP.defaultMaterial = '{rp.defaultMaterial?.name ?? "NULL"}', shader='{rp.defaultMaterial?.shader?.name ?? "NULL"}'");
+            Debug.Log($"[DIAG] defaultRP.defaultTerrainMaterial = '{rp.defaultTerrainMaterial?.name ?? "NULL"}', shader='{rp.defaultTerrainMaterial?.shader?.name ?? "NULL"}'");
+        }
+        Debug.Log("[DIAG] =========================================");
+    }
+
+    static void DumpShader(string label, Shader s)
+    {
+        if (s == null) { Debug.Log($"[DIAG] {label}: shader is NULL"); return; }
+        var path = AssetDatabase.GetAssetPath(s);
+        Debug.Log($"[DIAG] {label}: name='{s.name}', isSupported={s.isSupported}, renderQueue={s.renderQueue}, path='{path}'");
+    }
+
+    static void DumpMaterial(string label, Material m)
+    {
+        if (m == null) { Debug.Log($"[DIAG] {label}: material is NULL"); return; }
+        DumpShader(label + ".shader", m.shader);
+        Debug.Log($"[DIAG] {label}: name='{m.name}', color={m.color}, renderQueue={m.renderQueue}");
+        Debug.Log($"[DIAG] {label}: hasProp _BaseColor={m.HasProperty("_BaseColor")}, _Color={m.HasProperty("_Color")}, _MainTex={m.HasProperty("_MainTex")}, _BaseMap={m.HasProperty("_BaseMap")}");
+        Debug.Log($"[DIAG] {label}: shaderKeywords=[{string.Join(", ", m.shaderKeywords)}], passCount={m.passCount}");
+        Debug.Log($"[DIAG] {label}: assetPath='{AssetDatabase.GetAssetPath(m)}'");
+    }
+
+    static void DumpAtmosphereState()
+    {
+        Debug.Log("[DIAG] ===== ATMOSPHERE + LIGHTING =====");
+        Debug.Log($"[DIAG] RenderSettings.fog={RenderSettings.fog}, mode={RenderSettings.fogMode}, density={RenderSettings.fogDensity}, color={RenderSettings.fogColor}");
+        Debug.Log($"[DIAG] RenderSettings.ambientMode={RenderSettings.ambientMode}, ambientLight={RenderSettings.ambientLight}, ambientIntensity={RenderSettings.ambientIntensity}");
+        Debug.Log($"[DIAG] RenderSettings.skybox='{RenderSettings.skybox?.name ?? "NULL"}' shader='{RenderSettings.skybox?.shader?.name ?? "NULL"}'");
+        foreach (var l in Object.FindObjectsByType<Light>(FindObjectsSortMode.None))
+            Debug.Log($"[DIAG] Light '{l.name}': type={l.type}, intensity={l.intensity}, color={l.color}");
+        var cam = Camera.main;
+        if (cam != null)
+            Debug.Log($"[DIAG] Main Camera: clearFlags={cam.clearFlags}, backgroundColor={cam.backgroundColor}, nearClip={cam.nearClipPlane}, farClip={cam.farClipPlane}");
+    }
+
+    static void DumpCeilingAndStalactites()
+    {
+        Debug.Log("[DIAG] ===== CEILING + STALACTITES =====");
+        var ceiling = GameObject.Find("CaveCeiling");
+        if (ceiling != null)
+        {
+            var mr = ceiling.GetComponent<MeshRenderer>();
+            var mf = ceiling.GetComponent<MeshFilter>();
+            Debug.Log($"[DIAG] CaveCeiling found at {ceiling.transform.position}, scale={ceiling.transform.localScale}");
+            DumpMaterial("  ceiling.MR.sharedMaterial", mr?.sharedMaterial);
+            Debug.Log($"[DIAG]   mesh='{mf?.sharedMesh?.name}', vertCount={mf?.sharedMesh?.vertexCount ?? 0}, triCount={(mf?.sharedMesh?.triangles?.Length ?? 0) / 3}");
+        }
+        else Debug.Log("[DIAG] CaveCeiling NOT FOUND in scene");
+
+        var stalRoot = GameObject.Find("Stalactites");
+        if (stalRoot != null)
+        {
+            Debug.Log($"[DIAG] Stalactites root has {stalRoot.transform.childCount} children");
+            if (stalRoot.transform.childCount > 0)
+            {
+                var first = stalRoot.transform.GetChild(0);
+                DumpMaterial("  stalactite[0].MR.sharedMaterial", first.GetComponent<MeshRenderer>()?.sharedMaterial);
+            }
+        }
+    }
+
+    static void DumpFinalSceneState()
+    {
+        Debug.Log("[DIAG] ===== FINAL SCENE STATE =====");
+        var terrain = Object.FindFirstObjectByType<Terrain>();
+        if (terrain != null)
+        {
+            Debug.Log($"[DIAG] Terrain.materialTemplate = '{terrain.materialTemplate?.name ?? "NULL"}'");
+            DumpMaterial("  terrain.materialTemplate", terrain.materialTemplate);
+            Debug.Log($"[DIAG] Terrain layers count = {terrain.terrainData.terrainLayers?.Length ?? 0}");
+            if (terrain.terrainData.terrainLayers != null)
+                for (int i = 0; i < terrain.terrainData.terrainLayers.Length; i++)
+                {
+                    var tl = terrain.terrainData.terrainLayers[i];
+                    Debug.Log($"[DIAG]   layer[{i}]: name='{tl?.name}', diffuse='{tl?.diffuseTexture?.name}'");
+                }
+        }
+
+        // Verify rock prefabs on disk have correct material refs
+        for (int i = 1; i <= 4; i++)
+        {
+            var path = $"{RocksFolder}/Rock_{i:00}.prefab";
+            var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(path);
+            if (prefab != null)
+            {
+                var mr = prefab.GetComponent<MeshRenderer>();
+                Debug.Log($"[DIAG] {path}: MR.sharedMaterial='{mr?.sharedMaterial?.name ?? "NULL"}' shader='{mr?.sharedMaterial?.shader?.name ?? "NULL"}' isSupported={mr?.sharedMaterial?.shader?.isSupported}");
+            }
+        }
+
+        // Chemist materials
+        var coat = AssetDatabase.LoadAssetAtPath<Material>("Assets/Materials/ChemistCoat.mat");
+        DumpMaterial("ChemistCoat.mat", coat);
+        var skin = AssetDatabase.LoadAssetAtPath<Material>("Assets/Materials/ChemistSkin.mat");
+        DumpMaterial("ChemistSkin.mat", skin);
+
+        Debug.Log("[DIAG] ================================");
     }
 
     // ========================= TERRAIN =========================
@@ -143,61 +263,46 @@ public class BuildCaveWorld
 
     static Material EnsureRockMaterial()
     {
-        Debug.Log("[DIAG] EnsureRockMaterial begin");
-
+        Debug.Log("[DIAG] ===== ROCK MATERIAL =====");
         if (AssetDatabase.LoadAssetAtPath<Material>(RockMaterialPath) != null)
-        {
-            Debug.Log($"[DIAG] Deleting existing {RockMaterialPath}");
             AssetDatabase.DeleteAsset(RockMaterialPath);
-        }
 
         var mat = CreateURPLitMaterial("CaveRock", new Color(0.42f, 0.42f, 0.44f));
-        Debug.Log($"[DIAG] After CreateURPLitMaterial: mat.shader.name='{mat.shader?.name ?? "NULL"}', mat.shader==null? {mat.shader == null}");
-        Debug.Log($"[DIAG]   mat.color={mat.color}, HasProp _BaseColor={mat.HasProperty("_BaseColor")}, _Color={mat.HasProperty("_Color")}");
-        Debug.Log($"[DIAG]   enabled keywords: [{string.Join(", ", mat.shaderKeywords)}]");
-        Debug.Log($"[DIAG]   passes enabled: {mat.passCount} total");
+        DumpMaterial("rockMat (fresh, pre-save)", mat);
 
         AssetDatabase.CreateAsset(mat, RockMaterialPath);
         AssetDatabase.SaveAssets();
 
         var loaded = AssetDatabase.LoadAssetAtPath<Material>(RockMaterialPath);
-        Debug.Log($"[DIAG] After save+reload: loaded.shader.name='{loaded?.shader?.name ?? "NULL"}', loaded.shader==null? {loaded?.shader == null}");
-        Debug.Log($"[DIAG]   loaded.color={loaded?.color}");
+        DumpMaterial("rockMat (reloaded from disk)", loaded);
 
         return mat;
     }
 
     static Material EnsureTerrainMaterial()
     {
-        Debug.Log("[DIAG] EnsureTerrainMaterial begin");
-
+        Debug.Log("[DIAG] ===== TERRAIN MATERIAL =====");
         if (AssetDatabase.LoadAssetAtPath<Material>(TerrainMaterialPath) != null)
-        {
-            Debug.Log($"[DIAG] Deleting existing {TerrainMaterialPath}");
             AssetDatabase.DeleteAsset(TerrainMaterialPath);
-        }
 
         var shader = ShaderLookupHelpers.FindURPTerrainLit();
-        Debug.Log($"[DIAG] FindURPTerrainLit returned: '{shader?.name ?? "NULL"}' (null? {shader == null})");
+        DumpShader("FindURPTerrainLit result", shader);
 
         if (shader == null)
         {
-            Debug.Log("[DIAG] URP Terrain/Lit not found; returning null (Unity will auto-assign default terrain material).");
+            Debug.Log("[DIAG] URP Terrain/Lit shader unavailable → returning null → Unity will auto-assign default terrain material.");
             return null;
         }
 
         var mat = new Material(shader) { name = "CaveTerrain" };
-        Debug.Log($"[DIAG] Created terrain mat: shader='{mat.shader?.name ?? "NULL"}', color={mat.color}");
-        Debug.Log($"[DIAG]   HasProp _BaseColor={mat.HasProperty("_BaseColor")}, _Color={mat.HasProperty("_Color")}, _MainColor={mat.HasProperty("_MainColor")}");
-        Debug.Log($"[DIAG]   enabled keywords: [{string.Join(", ", mat.shaderKeywords)}]");
-        Debug.Log($"[DIAG]   passCount={mat.passCount}");
-
         SetColor(mat, new Color(0.3f, 0.3f, 0.33f));
+        DumpMaterial("terrainMat (fresh, pre-save)", mat);
+
         AssetDatabase.CreateAsset(mat, TerrainMaterialPath);
         AssetDatabase.SaveAssets();
 
         var loaded = AssetDatabase.LoadAssetAtPath<Material>(TerrainMaterialPath);
-        Debug.Log($"[DIAG] After save+reload: loaded.shader='{loaded?.shader?.name ?? "NULL"}', color={loaded?.color}");
+        DumpMaterial("terrainMat (reloaded from disk)", loaded);
 
         return mat;
     }
