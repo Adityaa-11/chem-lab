@@ -136,27 +136,59 @@ public class BuildCaveWorld
 
     static Material EnsureRockMaterial()
     {
-        var existing = AssetDatabase.LoadAssetAtPath<Material>(RockMaterialPath);
-        if (existing != null) return existing;
+        // If an old version exists, delete it — it might reference a broken
+        // shader from an earlier run.
+        if (AssetDatabase.LoadAssetAtPath<Material>(RockMaterialPath) != null)
+            AssetDatabase.DeleteAsset(RockMaterialPath);
 
-        var shader = Shader.Find("Universal Render Pipeline/Lit") ?? Shader.Find("Standard");
-        var mat = new Material(shader) { name = "CaveRock" };
-        SetColor(mat, new Color(0.42f, 0.42f, 0.44f));
+        var mat = CreateURPLitMaterial("CaveRock", new Color(0.42f, 0.42f, 0.44f));
         AssetDatabase.CreateAsset(mat, RockMaterialPath);
         return mat;
     }
 
     static Material EnsureTerrainMaterial()
     {
-        var existing = AssetDatabase.LoadAssetAtPath<Material>(TerrainMaterialPath);
-        if (existing != null) return existing;
+        if (AssetDatabase.LoadAssetAtPath<Material>(TerrainMaterialPath) != null)
+            AssetDatabase.DeleteAsset(TerrainMaterialPath);
 
-        var shader = Shader.Find("Universal Render Pipeline/Terrain/Lit")
-                     ?? Shader.Find("Nature/Terrain/Standard")
-                     ?? Shader.Find("Standard");
+        // For terrain specifically we need the URP Terrain shader, not URP Lit.
+        // Try a few names in order; if all fail, return null so BuildTerrain
+        // leaves the terrain on Unity's auto-assigned default material.
+        var shader = Shader.Find("Universal Render Pipeline/Terrain/Lit");
+        if (shader == null) shader = Shader.Find("Hidden/Universal Render Pipeline/Terrain/Lit");
+        if (shader == null)
+        {
+            Debug.Log("[ChemGame] URP Terrain shader not found by name; using Unity's default terrain material.");
+            return null;
+        }
+
         var mat = new Material(shader) { name = "CaveTerrain" };
         SetColor(mat, new Color(0.3f, 0.3f, 0.33f));
         AssetDatabase.CreateAsset(mat, TerrainMaterialPath);
+        return mat;
+    }
+
+    // Copy from URP's default material so we inherit its (guaranteed valid)
+    // URP Lit shader reference. Shader.Find can silently return null at Editor
+    // time in URP projects; this path avoids that failure mode entirely.
+    static Material CreateURPLitMaterial(string name, Color color)
+    {
+        var rp = UnityEngine.Rendering.GraphicsSettings.defaultRenderPipeline;
+        Material template = rp != null ? rp.defaultMaterial : null;
+
+        Material mat;
+        if (template != null && template.shader != null)
+        {
+            mat = new Material(template) { name = name };
+        }
+        else
+        {
+            var shader = Shader.Find("Universal Render Pipeline/Lit") ?? Shader.Find("Standard");
+            mat = new Material(shader) { name = name };
+            Debug.LogWarning("[ChemGame] URP default material not available; falling back to Shader.Find. If materials render pink, re-run Build Cave World after the project has fully loaded.");
+        }
+
+        SetColor(mat, color);
         return mat;
     }
 
