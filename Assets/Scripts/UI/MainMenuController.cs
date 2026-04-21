@@ -13,6 +13,8 @@ public class MainMenuController : MonoBehaviour
 
     private void Start()
     {
+        Cursor.lockState = CursorLockMode.None;
+        Cursor.visible = true;
         if (researchButton != null)
             researchButton.onClick.AddListener(() => SceneManager.LoadScene("ResearchTree"));
         if (periodicTableButton != null)
