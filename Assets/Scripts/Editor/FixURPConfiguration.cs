@@ -32,6 +32,7 @@ public static class FixURPConfiguration
         }
 
         Debug.Log($"[ChemGame] Using URP asset: '{AssetDatabase.GetAssetPath(urpAsset)}'");
+        DumpURPAssetHealth(urpAsset);
 
         GraphicsSettings.defaultRenderPipeline = urpAsset;
 
@@ -65,6 +66,48 @@ public static class FixURPConfiguration
             }
         }
         return null;
+    }
+
+    // Prints the four fields that determine whether a URP asset can actually
+    // produce frames. If rendererCount is 0, the asset is broken and nothing
+    // it drives will render — everything will be pink regardless of what's
+    // assigned to GraphicsSettings.
+    static void DumpURPAssetHealth(RenderPipelineAsset urpAsset)
+    {
+        Debug.Log("[ChemGame] URP asset health check:");
+        Debug.Log($"  defaultMaterial         = '{urpAsset.defaultMaterial?.name ?? "NULL"}'");
+        Debug.Log($"  defaultShader           = '{urpAsset.defaultShader?.name ?? "NULL"}'");
+        Debug.Log($"  renderPipelineShaderTag = '{urpAsset.renderPipelineShaderTag ?? "NULL"}'");
+
+        var t = urpAsset.GetType();
+        var rcProp = t.GetProperty("rendererCount");
+        int count = -1;
+        if (rcProp != null)
+        {
+            try { count = (int)rcProp.GetValue(urpAsset); }
+            catch { /* ignore */ }
+        }
+        Debug.Log($"  rendererCount           = {(count >= 0 ? count.ToString() : "UNKNOWN")}");
+
+        if (count == 0)
+        {
+            Debug.LogError(
+                "[ChemGame] URP asset has ZERO renderers — it cannot produce frames and everything will render pink.\n" +
+                "  → FIX: delete the current URP asset, then in the Project panel:\n" +
+                "     right-click → Create → Rendering → URP Asset (with Universal Renderer).\n" +
+                "     That menu creates a valid Renderer Data alongside the asset.\n" +
+                "  → Then re-run ChemGame → Fix URP Configuration.");
+        }
+        else if (urpAsset.defaultMaterial == null || urpAsset.defaultShader == null)
+        {
+            Debug.LogWarning(
+                "[ChemGame] URP asset is missing defaultMaterial or defaultShader — renderers exist but may not issue valid draw calls.\n" +
+                "  → If rocks still render pink after Build Cave World, recreate the URP asset via the Project panel menu as above.");
+        }
+        else
+        {
+            Debug.Log("[ChemGame] ✓ URP asset passes health check (has renderers and defaults).");
+        }
     }
 
     static RenderPipelineAsset TryCreateURPAsset()
