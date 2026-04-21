@@ -71,25 +71,63 @@ public class BuildCaveWorld
     {
         Debug.Log("[DIAG] ===== RENDER PIPELINE ENVIRONMENT =====");
         Debug.Log($"[DIAG] Unity version: {Application.unityVersion}");
-        Debug.Log($"[DIAG] GraphicsSettings.currentRenderPipeline = '{GraphicsSettings.currentRenderPipeline?.GetType().Name ?? "NULL"}'");
-        Debug.Log($"[DIAG] GraphicsSettings.defaultRenderPipeline = '{GraphicsSettings.defaultRenderPipeline?.GetType().Name ?? "NULL"}' (name='{GraphicsSettings.defaultRenderPipeline?.name ?? "NULL"}')");
+        var current = GraphicsSettings.currentRenderPipeline;
+        var defaultRp = GraphicsSettings.defaultRenderPipeline;
+        var qualityRp = QualitySettings.renderPipeline;
+        Debug.Log($"[DIAG] GraphicsSettings.currentRenderPipeline = '{current?.GetType().Name ?? "NULL"}'");
+        Debug.Log($"[DIAG] GraphicsSettings.defaultRenderPipeline = '{defaultRp?.GetType().Name ?? "NULL"}' (name='{defaultRp?.name ?? "NULL"}')");
         Debug.Log($"[DIAG] QualitySettings.activeQualityLevel = {QualitySettings.GetQualityLevel()}");
-        Debug.Log($"[DIAG] QualitySettings.renderPipeline = '{QualitySettings.renderPipeline?.GetType().Name ?? "NULL"}' (name='{QualitySettings.renderPipeline?.name ?? "NULL"}')");
+        Debug.Log($"[DIAG] QualitySettings.renderPipeline = '{qualityRp?.GetType().Name ?? "NULL"}' (name='{qualityRp?.name ?? "NULL"}')");
 
-        var rp = GraphicsSettings.defaultRenderPipeline;
-        if (rp != null)
+        if (defaultRp != null)
         {
-            Debug.Log($"[DIAG] defaultRP.defaultMaterial = '{rp.defaultMaterial?.name ?? "NULL"}', shader='{rp.defaultMaterial?.shader?.name ?? "NULL"}'");
-            Debug.Log($"[DIAG] defaultRP.defaultTerrainMaterial = '{rp.defaultTerrainMaterial?.name ?? "NULL"}', shader='{rp.defaultTerrainMaterial?.shader?.name ?? "NULL"}'");
+            Debug.Log($"[DIAG] defaultRP.defaultMaterial = '{defaultRp.defaultMaterial?.name ?? "NULL"}', shader='{defaultRp.defaultMaterial?.shader?.name ?? "NULL"}'");
+            Debug.Log($"[DIAG] defaultRP.defaultTerrainMaterial = '{defaultRp.defaultTerrainMaterial?.name ?? "NULL"}', shader='{defaultRp.defaultTerrainMaterial?.shader?.name ?? "NULL"}'");
+        }
+
+        // ----- Actionable diagnoses -----
+        if (current == null && defaultRp == null && qualityRp == null)
+        {
+            Debug.LogError(
+                "[DIAG-FIX] NO RENDER PIPELINE IS ACTIVE. This is likely why materials render pink.\n" +
+                "  → FIX: Edit → Project Settings → Graphics → 'Scriptable Render Pipeline Settings' field: assign the URP asset from Assets/.\n" +
+                "  → ALSO: Edit → Project Settings → Quality → every quality level's 'Render Pipeline Asset' field: assign URP asset.\n" +
+                "  → If no URP asset exists: Assets → Create → Rendering → URP Asset (with Universal Renderer).\n" +
+                "  → Then re-run ChemGame → Build Cave World.");
+        }
+        else if (current == null && (defaultRp != null || qualityRp != null))
+        {
+            Debug.LogWarning(
+                "[DIAG-FIX] currentRenderPipeline is null but a pipeline IS configured. Unity may not have applied it yet.\n" +
+                "  → FIX: restart Unity, then re-run Build Cave World.");
         }
         Debug.Log("[DIAG] =========================================");
     }
 
     static void DumpShader(string label, Shader s)
     {
-        if (s == null) { Debug.Log($"[DIAG] {label}: shader is NULL"); return; }
+        if (s == null)
+        {
+            Debug.LogError($"[DIAG] {label}: shader is NULL");
+            Debug.LogError(
+                "[DIAG-FIX] Shader could not be located.\n" +
+                "  → FIX: the URP package may be missing or corrupted.\n" +
+                "  → Close Unity, delete 'Library/PackageCache/com.unity.render-pipelines.universal@*' from the project, reopen.\n" +
+                "  → Or: Window → Package Manager → Universal RP → Remove → re-add version 17.0.4.");
+            return;
+        }
         var path = AssetDatabase.GetAssetPath(s);
         Debug.Log($"[DIAG] {label}: name='{s.name}', isSupported={s.isSupported}, renderQueue={s.renderQueue}, path='{path}'");
+
+        if (!s.isSupported)
+        {
+            Debug.LogError(
+                $"[DIAG-FIX] Shader '{s.name}' is NOT SUPPORTED in the current render pipeline. This will render pink.\n" +
+                "  → PROBABLE CAUSE: the URP render pipeline isn't the active one at build time (see RENDER PIPELINE ENVIRONMENT above).\n" +
+                "  → PRIMARY FIX: Edit → Project Settings → Graphics → assign URP asset to 'Scriptable Render Pipeline Settings'.\n" +
+                "  → SECONDARY FIX: Edit → Project Settings → Quality → each tier's 'Render Pipeline Asset' → assign URP asset.\n" +
+                "  → IF PIPELINE IS SET: the URP package may be corrupted — delete Library/PackageCache/com.unity.render-pipelines.universal@* and reopen Unity.");
+        }
     }
 
     static void DumpMaterial(string label, Material m)
@@ -149,16 +187,29 @@ public class BuildCaveWorld
         {
             Debug.Log($"[DIAG] Terrain.materialTemplate = '{terrain.materialTemplate?.name ?? "NULL"}'");
             DumpMaterial("  terrain.materialTemplate", terrain.materialTemplate);
-            Debug.Log($"[DIAG] Terrain layers count = {terrain.terrainData.terrainLayers?.Length ?? 0}");
+
+            int layerCount = terrain.terrainData.terrainLayers?.Length ?? 0;
+            Debug.Log($"[DIAG] Terrain layers count = {layerCount}");
             if (terrain.terrainData.terrainLayers != null)
                 for (int i = 0; i < terrain.terrainData.terrainLayers.Length; i++)
                 {
                     var tl = terrain.terrainData.terrainLayers[i];
                     Debug.Log($"[DIAG]   layer[{i}]: name='{tl?.name}', diffuse='{tl?.diffuseTexture?.name}'");
                 }
+
+            // Actionable diagnosis
+            if (layerCount == 0)
+            {
+                Debug.LogError(
+                    "[DIAG-FIX] TERRAIN HAS ZERO LAYERS. URP Terrain/Lit renders pink without at least one layer.\n" +
+                    "  → FIX (code): in BuildCaveWorld.BuildTerrain, after SetHeights, add a TerrainLayer asset with a diffuse texture and assign it to terrainData.terrainLayers.\n" +
+                    "  → FIX (manual): select the CaveTerrain GameObject → Terrain component → Paint Texture tool → Edit Terrain Layers → Add Layer → pick any diffuse texture (e.g. from NatureStarterKit2/Textures/).\n" +
+                    "  → After either fix the terrain will render the assigned layer's color/texture instead of magenta.");
+            }
         }
 
         // Verify rock prefabs on disk have correct material refs
+        int pinkRocks = 0;
         for (int i = 1; i <= 4; i++)
         {
             var path = $"{RocksFolder}/Rock_{i:00}.prefab";
@@ -166,8 +217,17 @@ public class BuildCaveWorld
             if (prefab != null)
             {
                 var mr = prefab.GetComponent<MeshRenderer>();
-                Debug.Log($"[DIAG] {path}: MR.sharedMaterial='{mr?.sharedMaterial?.name ?? "NULL"}' shader='{mr?.sharedMaterial?.shader?.name ?? "NULL"}' isSupported={mr?.sharedMaterial?.shader?.isSupported}");
+                var sh = mr?.sharedMaterial?.shader;
+                bool supported = sh != null && sh.isSupported;
+                Debug.Log($"[DIAG] {path}: MR.sharedMaterial='{mr?.sharedMaterial?.name ?? "NULL"}' shader='{sh?.name ?? "NULL"}' isSupported={supported}");
+                if (!supported) pinkRocks++;
             }
+        }
+        if (pinkRocks > 0)
+        {
+            Debug.LogError(
+                $"[DIAG-FIX] {pinkRocks} of 4 rock prefab(s) have an unsupported shader → they will render pink.\n" +
+                "  → See earlier [DIAG-FIX] output on the rock material shader. The fix is whatever the shader-level diagnosis recommended (usually: set the URP asset in Project Settings → Graphics + Quality).");
         }
 
         // Chemist materials
@@ -177,6 +237,8 @@ public class BuildCaveWorld
         DumpMaterial("ChemistSkin.mat", skin);
 
         Debug.Log("[DIAG] ================================");
+        Debug.Log("[DIAG] If you see [DIAG-FIX] errors above, follow the → FIX steps in order.");
+        Debug.Log("[DIAG] If no [DIAG-FIX] errors appear, all shaders/materials validated OK — any remaining visual issue is not a shader/material problem (check lighting, fog, camera position).");
     }
 
     // ========================= TERRAIN =========================
