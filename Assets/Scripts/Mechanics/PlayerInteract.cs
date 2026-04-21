@@ -21,6 +21,22 @@ public class PlayerInteract : MonoBehaviour
                 if (tree != null)
                 {
                     tree.Zap();
+                    return;
+                }
+
+                Rock rock = hit.collider.GetComponent<Rock>();
+
+                if (rock != null)
+                {
+                    rock.Zap();
+                    return;
+                }
+
+                Chemist chemist = hit.collider.GetComponentInParent<Chemist>();
+
+                if (chemist != null)
+                {
+                    chemist.Talk();
                 }
             }
         }

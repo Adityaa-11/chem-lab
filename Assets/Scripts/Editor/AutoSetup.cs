@@ -35,6 +35,7 @@ public class AutoSetup
         CreateGameManagerPrefab();
         BuildResearchTreeScene();
         BuildPeriodicTableScene();
+        BuildChemistPrefab.Build();
         UpdateBuildSettings();
         AssetDatabase.SaveAssets();
         AssetDatabase.Refresh();
@@ -92,6 +93,22 @@ public class AutoSetup
             color=new Color(0.44f,0.46f,0.47f),
             desc="Aluminum is the most abundant metal in Earth's crust. Lightweight yet strong, with excellent corrosion resistance due to a thin oxide layer.",
             biomes=new[]{"Wasteland"}, prereqs=new[]{"Fe","Sn"} },
+        new ElemDef { sym="Si", name="Silicon", z=14, shells=3, ve=4,
+            color=new Color(0.55f,0.55f,0.58f),
+            desc="Silicon is the second most abundant element in Earth's crust, the backbone of rocks, sand, and quartz. With 4 valence electrons it forms the silicate minerals that make up most of the planet's surface — and the silicon chips that power every computer.",
+            biomes=new[]{"Caverns"}, prereqs=new string[0] },
+        new ElemDef { sym="Ca", name="Calcium", z=20, shells=4, ve=2,
+            color=new Color(0.92f,0.92f,0.85f),
+            desc="Calcium is the mineral of bones, shells, and limestone. Dripping water deposits it over millennia to form the stalactites and stalagmites of caves. A reactive alkaline-earth metal with 2 valence electrons.",
+            biomes=new[]{"Caverns"}, prereqs=new string[0] },
+        new ElemDef { sym="S", name="Sulfur", z=16, shells=3, ve=6,
+            color=new Color(0.98f,0.86f,0.18f),
+            desc="Sulfur is the bright yellow mineral that crystallizes near volcanic vents and deep cave deposits. With 6 valence electrons it readily forms sulfides, sulfates, and the smell of struck matches.",
+            biomes=new[]{"Caverns"}, prereqs=new string[0] },
+        new ElemDef { sym="Au", name="Gold", z=79, shells=6, ve=1,
+            color=new Color(1f,0.84f,0f),
+            desc="Gold is the unreactive noble metal that resists tarnish and rust, prized since antiquity for its luster and conductivity. Rare veins form deep in quartz-rich cave systems — a lucky find for any prospector.",
+            biomes=new[]{"Caverns"}, prereqs=new[]{"Cu"} },
     };
 
     static void CreateElementAssets()
@@ -704,7 +721,8 @@ public class AutoSetup
         string[] scenePaths = {
             "Assets/Scenes/MainMenu.unity",
             "Assets/Scenes/ResearchTree.unity",
-            "Assets/Scenes/PeriodicTable.unity"
+            "Assets/Scenes/PeriodicTable.unity",
+            "Assets/Scenes/CaveWorld.unity"
         };
         foreach (var p in scenePaths)
         {
