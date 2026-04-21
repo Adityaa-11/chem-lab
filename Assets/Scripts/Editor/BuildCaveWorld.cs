@@ -151,14 +151,10 @@ public class BuildCaveWorld
         if (AssetDatabase.LoadAssetAtPath<Material>(TerrainMaterialPath) != null)
             AssetDatabase.DeleteAsset(TerrainMaterialPath);
 
-        // For terrain specifically we need the URP Terrain shader, not URP Lit.
-        // Try a few names in order; if all fail, return null so BuildTerrain
-        // leaves the terrain on Unity's auto-assigned default material.
-        var shader = Shader.Find("Universal Render Pipeline/Terrain/Lit");
-        if (shader == null) shader = Shader.Find("Hidden/Universal Render Pipeline/Terrain/Lit");
+        var shader = ShaderLookupHelpers.FindURPTerrainLit();
         if (shader == null)
         {
-            Debug.Log("[ChemGame] URP Terrain shader not found by name; using Unity's default terrain material.");
+            Debug.Log("[ChemGame] URP Terrain/Lit not found by any method; using Unity's default terrain material.");
             return null;
         }
 
@@ -168,26 +164,18 @@ public class BuildCaveWorld
         return mat;
     }
 
-    // Copy from URP's default material so we inherit its (guaranteed valid)
-    // URP Lit shader reference. Shader.Find can silently return null at Editor
-    // time in URP projects; this path avoids that failure mode entirely.
+    // Find URP Lit reliably. Tries five strategies because individual ones
+    // have all been observed to fail on one project configuration or another.
+    // See ShaderLookupHelpers below.
     static Material CreateURPLitMaterial(string name, Color color)
     {
-        var rp = UnityEngine.Rendering.GraphicsSettings.defaultRenderPipeline;
-        Material template = rp != null ? rp.defaultMaterial : null;
-
-        Material mat;
-        if (template != null && template.shader != null)
+        var shader = ShaderLookupHelpers.FindURPLit();
+        if (shader == null)
         {
-            mat = new Material(template) { name = name };
+            Debug.LogError("[ChemGame] Could not locate URP Lit by any method. Using Standard — materials will render pink in URP. Check URP package install.");
+            shader = Shader.Find("Standard");
         }
-        else
-        {
-            var shader = Shader.Find("Universal Render Pipeline/Lit") ?? Shader.Find("Standard");
-            mat = new Material(shader) { name = name };
-            Debug.LogWarning("[ChemGame] URP default material not available; falling back to Shader.Find. If materials render pink, re-run Build Cave World after the project has fully loaded.");
-        }
-
+        var mat = new Material(shader) { name = name };
         SetColor(mat, color);
         return mat;
     }

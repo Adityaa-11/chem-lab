@@ -127,26 +127,16 @@ public class BuildChemistPrefab
 
     static Material EnsureMaterial(string path, string name, Color color)
     {
-        // Always recreate — an older asset may reference a broken shader.
         if (AssetDatabase.LoadAssetAtPath<Material>(path) != null)
             AssetDatabase.DeleteAsset(path);
 
-        // Copy from URP's default material so we inherit a known-good URP Lit
-        // shader reference. Shader.Find is unreliable at Editor time in URP.
-        var rp = UnityEngine.Rendering.GraphicsSettings.defaultRenderPipeline;
-        Material template = rp != null ? rp.defaultMaterial : null;
-
-        Material mat;
-        if (template != null && template.shader != null)
+        var shader = ShaderLookupHelpers.FindURPLit();
+        if (shader == null)
         {
-            mat = new Material(template) { name = name };
+            Debug.LogError("[ChemGame] Could not locate URP Lit by any method. Using Standard — materials will render pink in URP. Check URP package install.");
+            shader = Shader.Find("Standard");
         }
-        else
-        {
-            var shader = Shader.Find("Universal Render Pipeline/Lit") ?? Shader.Find("Standard");
-            mat = new Material(shader) { name = name };
-        }
-
+        var mat = new Material(shader) { name = name };
         if (mat.HasProperty("_BaseColor")) mat.SetColor("_BaseColor", color);
         if (mat.HasProperty("_Color")) mat.SetColor("_Color", color);
         mat.color = color;
