@@ -47,23 +47,23 @@ public static class ShaderLookupHelpers
 
         // (1) Standard name-based lookup.
         s = Shader.Find(shaderName);
-        if (s != null) return s;
+        if (s != null) { Log(shaderName, 1, s); return s; }
 
         // (2) Load the shader file directly from URP's package path. This
         // works at Editor time even when Shader.Find's cache is cold.
         foreach (var p in packagePaths)
         {
             s = AssetDatabase.LoadAssetAtPath<Shader>(p);
-            if (s != null) return s;
+            if (s != null) { Log(shaderName, 2, s); return s; }
         }
 
         // (3) Grab it off the project-wide default render pipeline asset.
         s = defaultMaterialGrabber(GraphicsSettings.defaultRenderPipeline);
-        if (s != null) return s;
+        if (s != null) { Log(shaderName, 3, s); return s; }
 
         // (4) Try the currently-active quality tier's render pipeline.
         s = defaultMaterialGrabber(QualitySettings.renderPipeline);
-        if (s != null) return s;
+        if (s != null) { Log(shaderName, 4, s); return s; }
 
         // (5) Last resort: scan every Material asset in the project for any
         // already using the target shader, and reuse its reference.
@@ -73,10 +73,18 @@ public static class ShaderLookupHelpers
             var path = AssetDatabase.GUIDToAssetPath(g);
             var m = AssetDatabase.LoadAssetAtPath<Material>(path);
             if (m != null && m.shader != null && m.shader.name == shaderName)
+            {
+                Log(shaderName, 5, m.shader);
                 return m.shader;
+            }
         }
 
         return null;
+    }
+
+    static void Log(string target, int strategy, Shader s)
+    {
+        Debug.Log($"[ChemGame] Resolved '{target}' via strategy {strategy} → actual shader name: '{s.name}'");
     }
 }
 #endif
