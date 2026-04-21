@@ -50,6 +50,7 @@ public class BuildCaveWorld
         PlaceInventorySystem();
         PlacePlayer();
         PlaceHeadlamp();
+        PlaceNPCSpawner();
 
         EditorSceneManager.MarkSceneDirty(scene);
         EditorSceneManager.SaveScene(scene, ScenePath);
@@ -252,6 +253,31 @@ public class BuildCaveWorld
         var camRig = AssetDatabase.LoadAssetAtPath<GameObject>(
             "Assets/StarterAssets/FirstPersonController/Prefabs/PlayerFollowCamera.prefab");
         if (camRig != null) PrefabUtility.InstantiatePrefab(camRig);
+    }
+
+    static void PlaceNPCSpawner()
+    {
+        var chemist = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Prefabs/Chemist.prefab");
+        if (chemist == null)
+        {
+            chemist = BuildChemistPrefab.Build();
+            if (chemist == null)
+            {
+                Debug.LogWarning("[ChemGame] Failed to build Chemist prefab — skipping NPCSpawner.");
+                return;
+            }
+        }
+
+        var go = new GameObject("NPCSpawner");
+        var spawner = go.AddComponent<NPCSpawner>();
+        var so = new SerializedObject(spawner);
+        so.FindProperty("npcPrefab").objectReferenceValue = chemist;
+        so.FindProperty("areaSize").vector2Value = new Vector2(38f, 38f);
+        so.FindProperty("groundMask").intValue = 1;
+        so.FindProperty("waterMask").intValue = 0;
+        so.FindProperty("maxAttempts").intValue = 40;
+        so.FindProperty("minDistanceFromPlayer").floatValue = 12f;
+        so.ApplyModifiedPropertiesWithoutUndo();
     }
 
     static void PlaceHeadlamp()

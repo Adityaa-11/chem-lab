@@ -35,6 +35,7 @@ public class AutoSetup
         CreateGameManagerPrefab();
         BuildResearchTreeScene();
         BuildPeriodicTableScene();
+        BuildChemistPrefab.Build();
         UpdateBuildSettings();
         AssetDatabase.SaveAssets();
         AssetDatabase.Refresh();
