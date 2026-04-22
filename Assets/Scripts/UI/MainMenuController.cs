@@ -9,6 +9,7 @@ public class MainMenuController : MonoBehaviour
     [SerializeField] private Button exploreButton;
     [SerializeField] private Button constructButton;
     [SerializeField] private Button compendiumButton;
+    [SerializeField] private Button upgradesButton;
     [SerializeField] private Button quitButton;
 
     private void Start()
@@ -25,6 +26,8 @@ public class MainMenuController : MonoBehaviour
             constructButton.onClick.AddListener(() => SceneManager.LoadScene("Construct"));
         if (compendiumButton != null)
             compendiumButton.onClick.AddListener(() => SceneManager.LoadScene("Compendium"));
+        if (upgradesButton != null)
+            upgradesButton.onClick.AddListener(() => SceneManager.LoadScene("Upgrades"));
         if (quitButton != null)
             quitButton.onClick.AddListener(() => Application.Quit());
     }

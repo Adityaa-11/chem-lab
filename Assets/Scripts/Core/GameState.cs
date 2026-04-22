@@ -8,6 +8,7 @@ public class GameState : MonoBehaviour
 
     public event Action<string> OnElementResearched;
     public event Action<int> OnRPChanged;
+    public event Action<int> OnBatteryUpgraded;
 
     [SerializeField] private int startingRP = 5;
     [SerializeField] private ElementData[] allElements;
@@ -18,8 +19,15 @@ public class GameState : MonoBehaviour
     private HashSet<string> discoveredCompounds = new HashSet<string>();
     private int rp;
 
+    // Upgrade system
+    private int batteryLevel = 0;          // number of times upgraded
+    private int baseExploreTime = 15;      // default seconds
+    private int timePerUpgrade = 10;       // extra seconds per battery upgrade
+
     public int RP => rp;
     public ElementData[] AllElements => allElements;
+    public int BatteryLevel => batteryLevel;
+    public int ExploreTime => baseExploreTime + (batteryLevel * timePerUpgrade);
 
     private void Awake()
     {
@@ -29,6 +37,8 @@ public class GameState : MonoBehaviour
         rp = startingRP;
         foreach (var s in starterSymbols) researched.Add(s);
     }
+
+    // ======================== RESEARCH ========================
 
     public bool IsResearched(string sym) => researched.Contains(sym);
 
@@ -61,13 +71,40 @@ public class GameState : MonoBehaviour
         return null;
     }
 
+    // ======================== ATOMS ========================
+
     public int GetAtoms(string sym) => atoms.TryGetValue(sym, out int c) ? c : 0;
     public void AddAtoms(string sym, int n) { if (!atoms.ContainsKey(sym)) atoms[sym] = 0; atoms[sym] += n; }
     public bool RemoveAtoms(string sym, int n) { if (GetAtoms(sym) < n) return false; atoms[sym] -= n; return true; }
 
+    // ======================== RP ========================
+
     public void AddRP(int n) { rp += n; OnRPChanged?.Invoke(rp); }
     public bool SpendRP(int n) { if (rp < n) return false; rp -= n; OnRPChanged?.Invoke(rp); return true; }
 
+    // ======================== COMPOUNDS ========================
+
     public bool IsCompoundDiscovered(string formula) => discoveredCompounds.Contains(formula);
     public void DiscoverCompound(string formula) => discoveredCompounds.Add(formula);
+
+    // ======================== UPGRADES ========================
+
+    /// <summary>
+    /// Battery upgrade: costs 5 Fe + 10 Cu. Adds extra explore time.
+    /// Returns true if upgrade succeeded.
+    /// </summary>
+    public bool CanUpgradeBattery()
+    {
+        return GetAtoms("Fe") >= 5 && GetAtoms("Cu") >= 10;
+    }
+
+    public bool UpgradeBattery()
+    {
+        if (!CanUpgradeBattery()) return false;
+        RemoveAtoms("Fe", 5);
+        RemoveAtoms("Cu", 10);
+        batteryLevel++;
+        OnBatteryUpgraded?.Invoke(batteryLevel);
+        return true;
+    }
 }

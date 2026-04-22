@@ -33,11 +33,31 @@ public class ResearchTreeManager : MonoBehaviour
 
         if (GameState.Instance != null)
         {
-            GameState.Instance.OnElementResearched += (_) => RefreshAll();
-            GameState.Instance.OnRPChanged += (_) => UpdateRP();
+            GameState.Instance.OnElementResearched += OnElementResearched;
+            GameState.Instance.OnRPChanged += OnRPChanged;
         }
 
         RefreshAll();
+        UpdateRP();
+    }
+
+    private void OnDestroy()
+    {
+        // Unsubscribe to prevent MissingReferenceException when scene unloads
+        if (GameState.Instance != null)
+        {
+            GameState.Instance.OnElementResearched -= OnElementResearched;
+            GameState.Instance.OnRPChanged -= OnRPChanged;
+        }
+    }
+
+    private void OnElementResearched(string sym)
+    {
+        RefreshAll();
+    }
+
+    private void OnRPChanged(int newRP)
+    {
         UpdateRP();
     }
 
@@ -86,7 +106,10 @@ public class ResearchTreeManager : MonoBehaviour
     public void RefreshAll()
     {
         if (allNodes == null) return;
-        foreach (var n in allNodes) n.Refresh();
+        foreach (var n in allNodes)
+        {
+            if (n != null) n.Refresh();
+        }
         UpdateRP();
     }
 
