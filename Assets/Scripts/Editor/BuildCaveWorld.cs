@@ -381,6 +381,20 @@ public class BuildCaveWorld
         return mat;
     }
 
+    // Returns Rock1..Rock6 prefabs from the Low Poly Mushrooms Pack if they
+    // exist, otherwise null so the caller falls back to primitive generation.
+    static GameObject[] LoadMushroomPackRocks()
+    {
+        var found = new System.Collections.Generic.List<GameObject>();
+        for (int i = 1; i <= 6; i++)
+        {
+            var path = $"{MushroomPackRocksFolder}/Rock{i}.prefab";
+            var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(path);
+            if (prefab != null) found.Add(prefab);
+        }
+        return found.Count > 0 ? found.ToArray() : null;
+    }
+
     static TerrainLayer EnsureTerrainLayer()
     {
         if (AssetDatabase.LoadAssetAtPath<TerrainLayer>(TerrainLayerPath) != null)
@@ -442,9 +456,21 @@ public class BuildCaveWorld
 
     // ========================= ROCK PREFABS =========================
 
+    const string MushroomPackRocksFolder = "Assets/Low Poly Mushrooms Pack/Prefabs/Other";
+
     static GameObject[] MakeRockPrefabs(Material rockMat)
     {
         Debug.Log($"[DIAG] MakeRockPrefabs begin. rockMat arg: shader='{rockMat?.shader?.name ?? "NULL"}', name='{rockMat?.name}'");
+
+        // Prefer real rock meshes from the Low Poly Mushrooms Pack when they
+        // exist — produces proper cave rocks rather than primitive placeholders.
+        var packRocks = LoadMushroomPackRocks();
+        if (packRocks != null && packRocks.Length > 0)
+        {
+            Debug.Log($"[DIAG] Using {packRocks.Length} Low Poly Mushrooms Pack rock prefabs in place of primitives.");
+            return packRocks;
+        }
+        Debug.Log("[DIAG] Mushroom pack rocks not found — falling back to primitive placeholders.");
 
         var prefabs = new GameObject[4];
         Vector3[] scales = {
