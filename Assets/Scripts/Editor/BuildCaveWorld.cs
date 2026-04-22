@@ -395,6 +395,50 @@ public class BuildCaveWorld
         return found.Count > 0 ? found.ToArray() : null;
     }
 
+    // Instantiate each pack rock, strip missing-script MonoBehaviours,
+    // add the Rock component, save as our own prefab under Prefabs/Rocks/.
+    static GameObject[] WrapPackRocksWithRockComponent(GameObject[] packRocks)
+    {
+        var wrapped = new GameObject[packRocks.Length];
+        for (int i = 0; i < packRocks.Length; i++)
+        {
+            var instance = (GameObject)PrefabUtility.InstantiatePrefab(packRocks[i]);
+            instance.name = $"Rock_{i + 1:00}";
+
+            // Break the prefab link so subsequent edits don't try to write
+            // back to the pack asset.
+            PrefabUtility.UnpackPrefabInstance(
+                instance,
+                PrefabUnpackMode.Completely,
+                InteractionMode.AutomatedAction);
+
+            // The pack's Rock prefab embeds a MonoBehaviour whose script
+            // guid doesn't resolve in this project (a8f1da944fe21...).
+            // Remove it — and any missing-script refs on children — so
+            // RockSpawner instantiations don't log "missing script" every
+            // frame.
+            StripMissingScriptsRecursive(instance);
+
+            // Our click-to-zap component.
+            if (instance.GetComponent<Rock>() == null)
+                instance.AddComponent<Rock>();
+
+            string path = $"{RocksFolder}/Rock_{i + 1:00}.prefab";
+            if (AssetDatabase.LoadAssetAtPath<GameObject>(path) != null)
+                AssetDatabase.DeleteAsset(path);
+            wrapped[i] = PrefabUtility.SaveAsPrefabAsset(instance, path);
+            Object.DestroyImmediate(instance);
+        }
+        return wrapped;
+    }
+
+    static void StripMissingScriptsRecursive(GameObject go)
+    {
+        GameObjectUtility.RemoveMonoBehavioursWithMissingScript(go);
+        foreach (Transform child in go.transform)
+            StripMissingScriptsRecursive(child.gameObject);
+    }
+
     static TerrainLayer EnsureTerrainLayer()
     {
         if (AssetDatabase.LoadAssetAtPath<TerrainLayer>(TerrainLayerPath) != null)
@@ -463,12 +507,13 @@ public class BuildCaveWorld
         Debug.Log($"[DIAG] MakeRockPrefabs begin. rockMat arg: shader='{rockMat?.shader?.name ?? "NULL"}', name='{rockMat?.name}'");
 
         // Prefer real rock meshes from the Low Poly Mushrooms Pack when they
-        // exist — produces proper cave rocks rather than primitive placeholders.
+        // exist, but wrap them in our own prefabs with the Rock component
+        // attached and any broken demo-script references stripped.
         var packRocks = LoadMushroomPackRocks();
         if (packRocks != null && packRocks.Length > 0)
         {
-            Debug.Log($"[DIAG] Using {packRocks.Length} Low Poly Mushrooms Pack rock prefabs in place of primitives.");
-            return packRocks;
+            Debug.Log($"[DIAG] Wrapping {packRocks.Length} Low Poly Mushrooms Pack rocks with Rock component.");
+            return WrapPackRocksWithRockComponent(packRocks);
         }
         Debug.Log("[DIAG] Mushroom pack rocks not found — falling back to primitive placeholders.");
 
