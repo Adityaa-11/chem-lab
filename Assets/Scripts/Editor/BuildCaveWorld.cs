@@ -12,6 +12,8 @@ public class BuildCaveWorld
     const string RocksFolder = "Assets/Prefabs/Rocks";
     const string RockMaterialPath = "Assets/Materials/CaveRock.mat";
     const string TerrainMaterialPath = "Assets/Materials/CaveTerrain.mat";
+    const string TerrainLayerPath = "Assets/Terrains/CaveTerrainLayer.terrainlayer";
+    const string TerrainTexturePath = "Assets/Terrains/CaveTerrainTex.png";
     const string CeilingMeshPath = "Assets/Meshes/CaveCeiling.mesh";
     const string StalactiteMeshPath = "Assets/Meshes/Stalactite.mesh";
 
@@ -27,6 +29,8 @@ public class BuildCaveWorld
     [MenuItem("ChemGame/Build Cave World")]
     public static void Build()
     {
+        DumpRenderPipelineEnvironment();
+
         EnsureFolder("Assets/Terrains");
         EnsureFolder(RocksFolder);
         EnsureFolder("Assets/Materials");
@@ -38,6 +42,7 @@ public class BuildCaveWorld
         BuildTerrain();
         SetCaveAtmosphere();
         DimDirectionalLight();
+        DumpAtmosphereState();
 
         var rockMat = EnsureRockMaterial();
         var rockPrefabs = MakeRockPrefabs(rockMat);
@@ -45,6 +50,7 @@ public class BuildCaveWorld
 
         BuildCaveCeiling(rockMat);
         ScatterStalactites(rockMat);
+        DumpCeilingAndStalactites();
 
         PlaceGameManager();
         PlaceInventorySystem();
@@ -56,7 +62,191 @@ public class BuildCaveWorld
         EditorSceneManager.SaveScene(scene, ScenePath);
         AssetDatabase.SaveAssets();
         AssetDatabase.Refresh();
+
+        DumpFinalSceneState();
         Debug.Log($"[ChemGame] Built CaveWorld at {ScenePath}");
+    }
+
+    // ========================= DIAGNOSTICS =========================
+
+    static void DumpRenderPipelineEnvironment()
+    {
+        Debug.Log("[DIAG] ===== RENDER PIPELINE ENVIRONMENT =====");
+        Debug.Log($"[DIAG] Unity version: {Application.unityVersion}");
+        var current = GraphicsSettings.currentRenderPipeline;
+        var defaultRp = GraphicsSettings.defaultRenderPipeline;
+        var qualityRp = QualitySettings.renderPipeline;
+        Debug.Log($"[DIAG] GraphicsSettings.currentRenderPipeline = '{current?.GetType().Name ?? "NULL"}'");
+        Debug.Log($"[DIAG] GraphicsSettings.defaultRenderPipeline = '{defaultRp?.GetType().Name ?? "NULL"}' (name='{defaultRp?.name ?? "NULL"}')");
+        Debug.Log($"[DIAG] QualitySettings.activeQualityLevel = {QualitySettings.GetQualityLevel()}");
+        Debug.Log($"[DIAG] QualitySettings.renderPipeline = '{qualityRp?.GetType().Name ?? "NULL"}' (name='{qualityRp?.name ?? "NULL"}')");
+
+        if (defaultRp != null)
+        {
+            Debug.Log($"[DIAG] defaultRP.defaultMaterial = '{defaultRp.defaultMaterial?.name ?? "NULL"}', shader='{defaultRp.defaultMaterial?.shader?.name ?? "NULL"}'");
+            Debug.Log($"[DIAG] defaultRP.defaultTerrainMaterial = '{defaultRp.defaultTerrainMaterial?.name ?? "NULL"}', shader='{defaultRp.defaultTerrainMaterial?.shader?.name ?? "NULL"}'");
+        }
+
+        // ----- Actionable diagnoses -----
+        if (current == null && defaultRp == null && qualityRp == null)
+        {
+            Debug.LogError(
+                "[DIAG-FIX] NO RENDER PIPELINE IS ACTIVE. This is likely why materials render pink.\n" +
+                "  → FIX: Edit → Project Settings → Graphics → 'Scriptable Render Pipeline Settings' field: assign the URP asset from Assets/.\n" +
+                "  → ALSO: Edit → Project Settings → Quality → every quality level's 'Render Pipeline Asset' field: assign URP asset.\n" +
+                "  → If no URP asset exists: Assets → Create → Rendering → URP Asset (with Universal Renderer).\n" +
+                "  → Then re-run ChemGame → Build Cave World.");
+        }
+        else if (current == null && (defaultRp != null || qualityRp != null))
+        {
+            Debug.LogWarning(
+                "[DIAG-FIX] currentRenderPipeline is null but a pipeline IS configured. Unity may not have applied it yet.\n" +
+                "  → FIX: restart Unity, then re-run Build Cave World.");
+        }
+        Debug.Log("[DIAG] =========================================");
+    }
+
+    static void DumpShader(string label, Shader s)
+    {
+        if (s == null)
+        {
+            Debug.LogError($"[DIAG] {label}: shader is NULL");
+            Debug.LogError(
+                "[DIAG-FIX] Shader could not be located.\n" +
+                "  → FIX: the URP package may be missing or corrupted.\n" +
+                "  → Close Unity, delete 'Library/PackageCache/com.unity.render-pipelines.universal@*' from the project, reopen.\n" +
+                "  → Or: Window → Package Manager → Universal RP → Remove → re-add version 17.0.4.");
+            return;
+        }
+        var path = AssetDatabase.GetAssetPath(s);
+        Debug.Log($"[DIAG] {label}: name='{s.name}', isSupported={s.isSupported}, renderQueue={s.renderQueue}, path='{path}'");
+
+        if (!s.isSupported)
+        {
+            Debug.LogError(
+                $"[DIAG-FIX] Shader '{s.name}' is NOT SUPPORTED in the current render pipeline. This will render pink.\n" +
+                "  → PROBABLE CAUSE: the URP render pipeline isn't the active one at build time (see RENDER PIPELINE ENVIRONMENT above).\n" +
+                "  → PRIMARY FIX: Edit → Project Settings → Graphics → assign URP asset to 'Scriptable Render Pipeline Settings'.\n" +
+                "  → SECONDARY FIX: Edit → Project Settings → Quality → each tier's 'Render Pipeline Asset' → assign URP asset.\n" +
+                "  → IF PIPELINE IS SET: the URP package may be corrupted — delete Library/PackageCache/com.unity.render-pipelines.universal@* and reopen Unity.");
+        }
+    }
+
+    static void DumpMaterial(string label, Material m)
+    {
+        if (m == null) { Debug.Log($"[DIAG] {label}: material is NULL"); return; }
+        DumpShader(label + ".shader", m.shader);
+
+        // Avoid Material.color warning on shaders that don't expose _Color.
+        string colorStr = "N/A";
+        if (m.HasProperty("_BaseColor")) colorStr = m.GetColor("_BaseColor").ToString();
+        else if (m.HasProperty("_Color")) colorStr = m.GetColor("_Color").ToString();
+
+        Debug.Log($"[DIAG] {label}: name='{m.name}', color={colorStr}, renderQueue={m.renderQueue}");
+        Debug.Log($"[DIAG] {label}: hasProp _BaseColor={m.HasProperty("_BaseColor")}, _Color={m.HasProperty("_Color")}, _MainTex={m.HasProperty("_MainTex")}, _BaseMap={m.HasProperty("_BaseMap")}");
+        Debug.Log($"[DIAG] {label}: shaderKeywords=[{string.Join(", ", m.shaderKeywords)}], passCount={m.passCount}");
+        Debug.Log($"[DIAG] {label}: assetPath='{AssetDatabase.GetAssetPath(m)}'");
+    }
+
+    static void DumpAtmosphereState()
+    {
+        Debug.Log("[DIAG] ===== ATMOSPHERE + LIGHTING =====");
+        Debug.Log($"[DIAG] RenderSettings.fog={RenderSettings.fog}, mode={RenderSettings.fogMode}, density={RenderSettings.fogDensity}, color={RenderSettings.fogColor}");
+        Debug.Log($"[DIAG] RenderSettings.ambientMode={RenderSettings.ambientMode}, ambientLight={RenderSettings.ambientLight}, ambientIntensity={RenderSettings.ambientIntensity}");
+        Debug.Log($"[DIAG] RenderSettings.skybox='{RenderSettings.skybox?.name ?? "NULL"}' shader='{RenderSettings.skybox?.shader?.name ?? "NULL"}'");
+        foreach (var l in Object.FindObjectsByType<Light>(FindObjectsSortMode.None))
+            Debug.Log($"[DIAG] Light '{l.name}': type={l.type}, intensity={l.intensity}, color={l.color}");
+        var cam = Camera.main;
+        if (cam != null)
+            Debug.Log($"[DIAG] Main Camera: clearFlags={cam.clearFlags}, backgroundColor={cam.backgroundColor}, nearClip={cam.nearClipPlane}, farClip={cam.farClipPlane}");
+    }
+
+    static void DumpCeilingAndStalactites()
+    {
+        Debug.Log("[DIAG] ===== CEILING + STALACTITES =====");
+        var ceiling = GameObject.Find("CaveCeiling");
+        if (ceiling != null)
+        {
+            var mr = ceiling.GetComponent<MeshRenderer>();
+            var mf = ceiling.GetComponent<MeshFilter>();
+            Debug.Log($"[DIAG] CaveCeiling found at {ceiling.transform.position}, scale={ceiling.transform.localScale}");
+            DumpMaterial("  ceiling.MR.sharedMaterial", mr?.sharedMaterial);
+            Debug.Log($"[DIAG]   mesh='{mf?.sharedMesh?.name}', vertCount={mf?.sharedMesh?.vertexCount ?? 0}, triCount={(mf?.sharedMesh?.triangles?.Length ?? 0) / 3}");
+        }
+        else Debug.Log("[DIAG] CaveCeiling NOT FOUND in scene");
+
+        var stalRoot = GameObject.Find("Stalactites");
+        if (stalRoot != null)
+        {
+            Debug.Log($"[DIAG] Stalactites root has {stalRoot.transform.childCount} children");
+            if (stalRoot.transform.childCount > 0)
+            {
+                var first = stalRoot.transform.GetChild(0);
+                DumpMaterial("  stalactite[0].MR.sharedMaterial", first.GetComponent<MeshRenderer>()?.sharedMaterial);
+            }
+        }
+    }
+
+    static void DumpFinalSceneState()
+    {
+        Debug.Log("[DIAG] ===== FINAL SCENE STATE =====");
+        var terrain = Object.FindFirstObjectByType<Terrain>();
+        if (terrain != null)
+        {
+            Debug.Log($"[DIAG] Terrain.materialTemplate = '{terrain.materialTemplate?.name ?? "NULL"}'");
+            DumpMaterial("  terrain.materialTemplate", terrain.materialTemplate);
+
+            int layerCount = terrain.terrainData.terrainLayers?.Length ?? 0;
+            Debug.Log($"[DIAG] Terrain layers count = {layerCount}");
+            if (terrain.terrainData.terrainLayers != null)
+                for (int i = 0; i < terrain.terrainData.terrainLayers.Length; i++)
+                {
+                    var tl = terrain.terrainData.terrainLayers[i];
+                    Debug.Log($"[DIAG]   layer[{i}]: name='{tl?.name}', diffuse='{tl?.diffuseTexture?.name}'");
+                }
+
+            // Actionable diagnosis
+            if (layerCount == 0)
+            {
+                Debug.LogError(
+                    "[DIAG-FIX] TERRAIN HAS ZERO LAYERS. URP Terrain/Lit renders pink without at least one layer.\n" +
+                    "  → FIX (code): in BuildCaveWorld.BuildTerrain, after SetHeights, add a TerrainLayer asset with a diffuse texture and assign it to terrainData.terrainLayers.\n" +
+                    "  → FIX (manual): select the CaveTerrain GameObject → Terrain component → Paint Texture tool → Edit Terrain Layers → Add Layer → pick any diffuse texture (e.g. from NatureStarterKit2/Textures/).\n" +
+                    "  → After either fix the terrain will render the assigned layer's color/texture instead of magenta.");
+            }
+        }
+
+        // Verify rock prefabs on disk have correct material refs
+        int pinkRocks = 0;
+        for (int i = 1; i <= 4; i++)
+        {
+            var path = $"{RocksFolder}/Rock_{i:00}.prefab";
+            var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(path);
+            if (prefab != null)
+            {
+                var mr = prefab.GetComponent<MeshRenderer>();
+                var sh = mr?.sharedMaterial?.shader;
+                bool supported = sh != null && sh.isSupported;
+                Debug.Log($"[DIAG] {path}: MR.sharedMaterial='{mr?.sharedMaterial?.name ?? "NULL"}' shader='{sh?.name ?? "NULL"}' isSupported={supported}");
+                if (!supported) pinkRocks++;
+            }
+        }
+        if (pinkRocks > 0)
+        {
+            Debug.LogError(
+                $"[DIAG-FIX] {pinkRocks} of 4 rock prefab(s) have an unsupported shader → they will render pink.\n" +
+                "  → See earlier [DIAG-FIX] output on the rock material shader. The fix is whatever the shader-level diagnosis recommended (usually: set the URP asset in Project Settings → Graphics + Quality).");
+        }
+
+        // Chemist materials
+        var coat = AssetDatabase.LoadAssetAtPath<Material>("Assets/Materials/ChemistCoat.mat");
+        DumpMaterial("ChemistCoat.mat", coat);
+        var skin = AssetDatabase.LoadAssetAtPath<Material>("Assets/Materials/ChemistSkin.mat");
+        DumpMaterial("ChemistSkin.mat", skin);
+
+        Debug.Log("[DIAG] ================================");
+        Debug.Log("[DIAG] If you see [DIAG-FIX] errors above, follow the → FIX steps in order.");
+        Debug.Log("[DIAG] If no [DIAG-FIX] errors appear, all shaders/materials validated OK — any remaining visual issue is not a shader/material problem (check lighting, fog, camera position).");
     }
 
     // ========================= TERRAIN =========================
@@ -91,6 +281,12 @@ public class BuildCaveWorld
         }
         td.SetHeights(0, 0, heights);
 
+        // URP Terrain/Lit shader requires at least one TerrainLayer to sample
+        // from; without one the terrain renders magenta.
+        td.terrainLayers = new[] { EnsureTerrainLayer() };
+
+        Debug.Log($"[DIAG] TerrainData created. size={td.size}, heightmapResolution={td.heightmapResolution}, terrainLayers.Length={td.terrainLayers?.Length ?? 0}");
+
         if (AssetDatabase.LoadAssetAtPath<TerrainData>(TerrainDataPath) != null)
             AssetDatabase.DeleteAsset(TerrainDataPath);
         AssetDatabase.CreateAsset(td, TerrainDataPath);
@@ -101,8 +297,13 @@ public class BuildCaveWorld
         terrainGO.layer = 0;
 
         var terrain = terrainGO.GetComponent<Terrain>();
+        Debug.Log($"[DIAG] After CreateTerrainGameObject: terrain.materialTemplate='{terrain.materialTemplate?.name ?? "NULL"}' shader='{terrain.materialTemplate?.shader?.name ?? "NULL"}'");
+
         var terrainMat = EnsureTerrainMaterial();
         if (terrainMat != null) terrain.materialTemplate = terrainMat;
+
+        Debug.Log($"[DIAG] After materialTemplate assignment: terrain.materialTemplate='{terrain.materialTemplate?.name ?? "NULL"}' shader='{terrain.materialTemplate?.shader?.name ?? "NULL"}'");
+        Debug.Log($"[DIAG] Terrain final state: terrainData.terrainLayers.Length={terrain.terrainData.terrainLayers?.Length ?? 0}, alphamapLayers={terrain.terrainData.alphamapLayers}");
     }
 
     // ========================= ATMOSPHERE =========================
@@ -136,27 +337,157 @@ public class BuildCaveWorld
 
     static Material EnsureRockMaterial()
     {
-        var existing = AssetDatabase.LoadAssetAtPath<Material>(RockMaterialPath);
-        if (existing != null) return existing;
+        Debug.Log("[DIAG] ===== ROCK MATERIAL =====");
+        if (AssetDatabase.LoadAssetAtPath<Material>(RockMaterialPath) != null)
+            AssetDatabase.DeleteAsset(RockMaterialPath);
 
-        var shader = Shader.Find("Universal Render Pipeline/Lit") ?? Shader.Find("Standard");
-        var mat = new Material(shader) { name = "CaveRock" };
-        SetColor(mat, new Color(0.42f, 0.42f, 0.44f));
+        var mat = CreateURPLitMaterial("CaveRock", new Color(0.42f, 0.42f, 0.44f));
+        DumpMaterial("rockMat (fresh, pre-save)", mat);
+
         AssetDatabase.CreateAsset(mat, RockMaterialPath);
+        AssetDatabase.SaveAssets();
+
+        var loaded = AssetDatabase.LoadAssetAtPath<Material>(RockMaterialPath);
+        DumpMaterial("rockMat (reloaded from disk)", loaded);
+
         return mat;
     }
 
     static Material EnsureTerrainMaterial()
     {
-        var existing = AssetDatabase.LoadAssetAtPath<Material>(TerrainMaterialPath);
-        if (existing != null) return existing;
+        Debug.Log("[DIAG] ===== TERRAIN MATERIAL =====");
+        if (AssetDatabase.LoadAssetAtPath<Material>(TerrainMaterialPath) != null)
+            AssetDatabase.DeleteAsset(TerrainMaterialPath);
 
-        var shader = Shader.Find("Universal Render Pipeline/Terrain/Lit")
-                     ?? Shader.Find("Nature/Terrain/Standard")
-                     ?? Shader.Find("Standard");
+        var shader = ShaderLookupHelpers.FindURPTerrainLit();
+        DumpShader("FindURPTerrainLit result", shader);
+
+        if (shader == null)
+        {
+            Debug.Log("[DIAG] URP Terrain/Lit shader unavailable → returning null → Unity will auto-assign default terrain material.");
+            return null;
+        }
+
         var mat = new Material(shader) { name = "CaveTerrain" };
         SetColor(mat, new Color(0.3f, 0.3f, 0.33f));
+        DumpMaterial("terrainMat (fresh, pre-save)", mat);
+
         AssetDatabase.CreateAsset(mat, TerrainMaterialPath);
+        AssetDatabase.SaveAssets();
+
+        var loaded = AssetDatabase.LoadAssetAtPath<Material>(TerrainMaterialPath);
+        DumpMaterial("terrainMat (reloaded from disk)", loaded);
+
+        return mat;
+    }
+
+    // Returns Rock1..Rock6 prefabs from the Low Poly Mushrooms Pack if they
+    // exist, otherwise null so the caller falls back to primitive generation.
+    static GameObject[] LoadMushroomPackRocks()
+    {
+        var found = new System.Collections.Generic.List<GameObject>();
+        for (int i = 1; i <= 6; i++)
+        {
+            var path = $"{MushroomPackRocksFolder}/Rock{i}.prefab";
+            var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(path);
+            if (prefab != null) found.Add(prefab);
+        }
+        return found.Count > 0 ? found.ToArray() : null;
+    }
+
+    // Instantiate each pack rock, strip missing-script MonoBehaviours,
+    // add the Rock component, save as our own prefab under Prefabs/Rocks/.
+    static GameObject[] WrapPackRocksWithRockComponent(GameObject[] packRocks)
+    {
+        var wrapped = new GameObject[packRocks.Length];
+        for (int i = 0; i < packRocks.Length; i++)
+        {
+            var instance = (GameObject)PrefabUtility.InstantiatePrefab(packRocks[i]);
+            instance.name = $"Rock_{i + 1:00}";
+
+            // Break the prefab link so subsequent edits don't try to write
+            // back to the pack asset.
+            PrefabUtility.UnpackPrefabInstance(
+                instance,
+                PrefabUnpackMode.Completely,
+                InteractionMode.AutomatedAction);
+
+            // The pack's Rock prefab embeds a MonoBehaviour whose script
+            // guid doesn't resolve in this project (a8f1da944fe21...).
+            // Remove it — and any missing-script refs on children — so
+            // RockSpawner instantiations don't log "missing script" every
+            // frame.
+            StripMissingScriptsRecursive(instance);
+
+            // Our click-to-zap component.
+            if (instance.GetComponent<Rock>() == null)
+                instance.AddComponent<Rock>();
+
+            string path = $"{RocksFolder}/Rock_{i + 1:00}.prefab";
+            if (AssetDatabase.LoadAssetAtPath<GameObject>(path) != null)
+                AssetDatabase.DeleteAsset(path);
+            wrapped[i] = PrefabUtility.SaveAsPrefabAsset(instance, path);
+            Object.DestroyImmediate(instance);
+        }
+        return wrapped;
+    }
+
+    static void StripMissingScriptsRecursive(GameObject go)
+    {
+        GameObjectUtility.RemoveMonoBehavioursWithMissingScript(go);
+        foreach (Transform child in go.transform)
+            StripMissingScriptsRecursive(child.gameObject);
+    }
+
+    static TerrainLayer EnsureTerrainLayer()
+    {
+        if (AssetDatabase.LoadAssetAtPath<TerrainLayer>(TerrainLayerPath) != null)
+            AssetDatabase.DeleteAsset(TerrainLayerPath);
+
+        var tex = EnsureTerrainTexture();
+        var layer = new TerrainLayer
+        {
+            diffuseTexture = tex,
+            tileSize = new Vector2(8f, 8f)
+        };
+        AssetDatabase.CreateAsset(layer, TerrainLayerPath);
+        return layer;
+    }
+
+    static Texture2D EnsureTerrainTexture()
+    {
+        var existing = AssetDatabase.LoadAssetAtPath<Texture2D>(TerrainTexturePath);
+        if (existing != null) return existing;
+
+        const int size = 32;
+        var tex = new Texture2D(size, size, TextureFormat.RGB24, false);
+        var pixels = new Color[size * size];
+        for (int y = 0; y < size; y++)
+            for (int x = 0; x < size; x++)
+            {
+                float n = (Mathf.PerlinNoise(x * 0.25f, y * 0.25f) - 0.5f) * 0.08f;
+                pixels[y * size + x] = new Color(0.33f + n, 0.33f + n, 0.35f + n);
+            }
+        tex.SetPixels(pixels);
+        tex.Apply();
+        File.WriteAllBytes(TerrainTexturePath, tex.EncodeToPNG());
+        AssetDatabase.ImportAsset(TerrainTexturePath);
+        return AssetDatabase.LoadAssetAtPath<Texture2D>(TerrainTexturePath);
+    }
+
+    // Find URP Lit reliably. Tries five strategies because individual ones
+    // have all been observed to fail on one project configuration or another.
+    // See ShaderLookupHelpers below.
+    static Material CreateURPLitMaterial(string name, Color color)
+    {
+        var shader = ShaderLookupHelpers.FindURPLit();
+        if (shader == null)
+        {
+            Debug.LogError("[ChemGame] Could not locate URP Lit by any method. Using Standard — materials will render pink in URP. Check URP package install.");
+            shader = Shader.Find("Standard");
+        }
+        var mat = new Material(shader) { name = name };
+        SetColor(mat, color);
         return mat;
     }
 
@@ -169,8 +500,23 @@ public class BuildCaveWorld
 
     // ========================= ROCK PREFABS =========================
 
+    const string MushroomPackRocksFolder = "Assets/Low Poly Mushrooms Pack/Prefabs/Other";
+
     static GameObject[] MakeRockPrefabs(Material rockMat)
     {
+        Debug.Log($"[DIAG] MakeRockPrefabs begin. rockMat arg: shader='{rockMat?.shader?.name ?? "NULL"}', name='{rockMat?.name}'");
+
+        // Prefer real rock meshes from the Low Poly Mushrooms Pack when they
+        // exist, but wrap them in our own prefabs with the Rock component
+        // attached and any broken demo-script references stripped.
+        var packRocks = LoadMushroomPackRocks();
+        if (packRocks != null && packRocks.Length > 0)
+        {
+            Debug.Log($"[DIAG] Wrapping {packRocks.Length} Low Poly Mushrooms Pack rocks with Rock component.");
+            return WrapPackRocksWithRockComponent(packRocks);
+        }
+        Debug.Log("[DIAG] Mushroom pack rocks not found — falling back to primitive placeholders.");
+
         var prefabs = new GameObject[4];
         Vector3[] scales = {
             new Vector3(1.3f, 0.7f, 1.1f),
@@ -187,15 +533,28 @@ public class BuildCaveWorld
             var go = GameObject.CreatePrimitive(types[i]);
             go.name = $"Rock_{i + 1:00}";
             go.transform.localScale = scales[i];
-            go.GetComponent<MeshRenderer>().sharedMaterial = rockMat;
+
+            var mr = go.GetComponent<MeshRenderer>();
+            Debug.Log($"[DIAG] Rock_{i + 1:00}: primitive created. Default MR material shader='{mr.sharedMaterial?.shader?.name ?? "NULL"}'");
+
+            mr.sharedMaterial = rockMat;
+            Debug.Log($"[DIAG]   after assign: MR.sharedMaterial.shader='{mr.sharedMaterial?.shader?.name ?? "NULL"}', same instance as rockMat? {ReferenceEquals(mr.sharedMaterial, rockMat)}");
+
             go.AddComponent<Rock>();
 
             string path = $"{RocksFolder}/Rock_{i + 1:00}.prefab";
             if (AssetDatabase.LoadAssetAtPath<GameObject>(path) != null)
                 AssetDatabase.DeleteAsset(path);
             prefabs[i] = PrefabUtility.SaveAsPrefabAsset(go, path);
+
+            // Reload the saved prefab and inspect what actually got written.
+            var reloaded = AssetDatabase.LoadAssetAtPath<GameObject>(path);
+            var reloadedMR = reloaded?.GetComponent<MeshRenderer>();
+            Debug.Log($"[DIAG]   saved prefab reloaded: MR.sharedMaterial='{reloadedMR?.sharedMaterial?.name ?? "NULL"}' shader='{reloadedMR?.sharedMaterial?.shader?.name ?? "NULL"}'");
+
             Object.DestroyImmediate(go);
         }
+        Debug.Log("[DIAG] MakeRockPrefabs end");
         return prefabs;
     }
 
@@ -250,9 +609,93 @@ public class BuildCaveWorld
         if (p.GetComponent<PlayerInteract>() == null)
             p.AddComponent<PlayerInteract>();
 
-        var camRig = AssetDatabase.LoadAssetAtPath<GameObject>(
+        var camRigPrefab = AssetDatabase.LoadAssetAtPath<GameObject>(
             "Assets/StarterAssets/FirstPersonController/Prefabs/PlayerFollowCamera.prefab");
-        if (camRig != null) PrefabUtility.InstantiatePrefab(camRig);
+        GameObject camRigInstance = null;
+        if (camRigPrefab != null)
+            camRigInstance = (GameObject)PrefabUtility.InstantiatePrefab(camRigPrefab);
+
+        // Wire Cinemachine vcam's Follow target to the player's head transform.
+        // Without this, the vcam sits at its prefab's origin and the Play view
+        // looks third-person (or doesn't track the player at all).
+        WireCinemachineToPlayer(camRigInstance, p);
+
+        // Cinemachine needs a CinemachineBrain on the rendering Main Camera
+        // to drive its vcam. The default scene's Main Camera doesn't have one.
+        EnsureCinemachineBrainOnMainCamera();
+    }
+
+    static void WireCinemachineToPlayer(GameObject camRig, GameObject player)
+    {
+        if (camRig == null || player == null) return;
+
+        // Find the FPS camera anchor — StarterAssets convention: PlayerCameraRoot
+        Transform cameraRoot = null;
+        foreach (var t in player.GetComponentsInChildren<Transform>(true))
+        {
+            if (t.name == "PlayerCameraRoot") { cameraRoot = t; break; }
+        }
+        if (cameraRoot == null)
+        {
+            Debug.LogWarning("[ChemGame] PlayerCameraRoot not found under PlayerCapsule. Wire the vcam target manually.");
+            return;
+        }
+
+        // Find the Cinemachine camera component (CM 3: CinemachineCamera, CM 2: CinemachineVirtualCamera).
+        Component vcam = null;
+        foreach (var c in camRig.GetComponentsInChildren<Component>(true))
+        {
+            if (c == null) continue;
+            var n = c.GetType().Name;
+            if (n == "CinemachineCamera" || n == "CinemachineVirtualCamera") { vcam = c; break; }
+        }
+        if (vcam == null)
+        {
+            Debug.LogWarning("[ChemGame] No CinemachineCamera component on PlayerFollowCamera.");
+            return;
+        }
+
+        // Try common property paths across CM versions.
+        var so = new SerializedObject(vcam);
+        string[] paths = { "Target.TrackingTarget", "m_Target.TrackingTarget", "Follow", "m_Follow" };
+        foreach (var path in paths)
+        {
+            var prop = so.FindProperty(path);
+            if (prop != null && prop.propertyType == SerializedPropertyType.ObjectReference)
+            {
+                prop.objectReferenceValue = cameraRoot;
+                so.ApplyModifiedPropertiesWithoutUndo();
+                Debug.Log($"[ChemGame] Wired Cinemachine '{path}' → {cameraRoot.name}");
+                return;
+            }
+        }
+        Debug.LogWarning("[ChemGame] Could not locate Follow / Tracking Target property on CinemachineCamera. Drag PlayerCameraRoot into the vcam's Tracking Target field manually.");
+    }
+
+    static void EnsureCinemachineBrainOnMainCamera()
+    {
+        var mainCam = Camera.main;
+        if (mainCam == null)
+        {
+            var cams = Object.FindObjectsByType<Camera>(FindObjectsSortMode.None);
+            if (cams.Length > 0) mainCam = cams[0];
+        }
+        if (mainCam == null) return;
+
+        var brainType =
+            System.Type.GetType("Unity.Cinemachine.CinemachineBrain, Unity.Cinemachine") ??
+            System.Type.GetType("Cinemachine.CinemachineBrain, Cinemachine");
+        if (brainType == null)
+        {
+            Debug.LogWarning("[ChemGame] CinemachineBrain type not found. Is the Cinemachine package installed?");
+            return;
+        }
+
+        if (mainCam.GetComponent(brainType) == null)
+        {
+            mainCam.gameObject.AddComponent(brainType);
+            Debug.Log("[ChemGame] Added CinemachineBrain to Main Camera");
+        }
     }
 
     static void PlaceNPCSpawner()

@@ -127,10 +127,15 @@ public class BuildChemistPrefab
 
     static Material EnsureMaterial(string path, string name, Color color)
     {
-        var existing = AssetDatabase.LoadAssetAtPath<Material>(path);
-        if (existing != null) return existing;
+        if (AssetDatabase.LoadAssetAtPath<Material>(path) != null)
+            AssetDatabase.DeleteAsset(path);
 
-        var shader = Shader.Find("Universal Render Pipeline/Lit") ?? Shader.Find("Standard");
+        var shader = ShaderLookupHelpers.FindURPLit();
+        if (shader == null)
+        {
+            Debug.LogError("[ChemGame] Could not locate URP Lit by any method. Using Standard — materials will render pink in URP. Check URP package install.");
+            shader = Shader.Find("Standard");
+        }
         var mat = new Material(shader) { name = name };
         if (mat.HasProperty("_BaseColor")) mat.SetColor("_BaseColor", color);
         if (mat.HasProperty("_Color")) mat.SetColor("_Color", color);
