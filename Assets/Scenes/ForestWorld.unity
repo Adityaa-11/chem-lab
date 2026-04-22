@@ -497,7 +497,7 @@ MonoBehaviour:
   areaSize: {x: 100, y: 100}
   groundMask:
     serializedVersion: 2
-    m_Bits: 1
+    m_Bits: 9
   waterMask:
     serializedVersion: 2
     m_Bits: 16
