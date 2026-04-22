@@ -3,6 +3,7 @@ using UnityEngine;
 public class RockSpawner : MonoBehaviour
 {
     public GameObject[] rockPrefabs;
+    public GameObject saltPrefab;
     public int rockCount = 200;
     public Vector2 areaSize = new Vector2(100, 100);
 
@@ -45,7 +46,16 @@ public class RockSpawner : MonoBehaviour
             }
             if (groundHit.HasValue)
             {
-                GameObject prefab = rockPrefabs[Random.Range(0, rockPrefabs.Length)];
+                GameObject prefab;
+                float r = Random.Range(0f, 100f);
+                if (r < 1f)
+                {
+                    prefab = saltPrefab;
+                }
+                else
+                {
+                    prefab = rockPrefabs[Random.Range(0, rockPrefabs.Length)];
+                }
                 GameObject rock = Instantiate(
                     prefab,
                     groundHit.Value.point,

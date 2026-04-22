@@ -19,6 +19,7 @@ public class GameState : MonoBehaviour
     private HashSet<string> discoveredCompounds = new HashSet<string>();
     private int rp;
 
+
     // Upgrade system
     private int batteryLevel = 0;          // number of times upgraded
     private int baseExploreTime = 15;      // default seconds
@@ -28,7 +29,6 @@ public class GameState : MonoBehaviour
     public ElementData[] AllElements => allElements;
     public int BatteryLevel => batteryLevel;
     public int ExploreTime => baseExploreTime + (batteryLevel * timePerUpgrade);
-
     private void Awake()
     {
         if (Instance != null && Instance != this) { Destroy(gameObject); return; }
@@ -95,16 +95,28 @@ public class GameState : MonoBehaviour
     /// </summary>
     public bool CanUpgradeBattery()
     {
-        return GetAtoms("Fe") >= 5 && GetAtoms("Cu") >= 10;
+        var inv = InventorySystem.instance;
+        if (inv == null) return false;
+
+        return inv.GetAmount("Iron") >= 5
+            && inv.GetAmount("Copper") >= 10
+            && inv.GetAmount("Sodium") >= 5;
     }
 
     public bool UpgradeBattery()
     {
         if (!CanUpgradeBattery()) return false;
-        RemoveAtoms("Fe", 5);
-        RemoveAtoms("Cu", 10);
+        var inv = InventorySystem.instance;
+        inv.RemoveElement("Iron", 10);
+        inv.RemoveElement("Copper", 5);
+        inv.RemoveElement("Sodium", 5);
         batteryLevel++;
         OnBatteryUpgraded?.Invoke(batteryLevel);
         return true;
+    }
+
+    public int getBatteryLevel()
+    {
+        return batteryLevel;        
     }
 }

@@ -11,8 +11,10 @@ public class UpgradesUI : MonoBehaviour
     [SerializeField] private TextMeshProUGUI batteryTimerText;
     [SerializeField] private TextMeshProUGUI ironCountText;
     [SerializeField] private TextMeshProUGUI copperCountText;
+    [SerializeField] private TextMeshProUGUI sodiumCountText;
     [SerializeField] private TextMeshProUGUI ironReqText;
     [SerializeField] private TextMeshProUGUI copperReqText;
+    [SerializeField] private TextMeshProUGUI sodiumReqText;
     [SerializeField] private Button upgradeButton;
     [SerializeField] private TextMeshProUGUI upgradeButtonText;
     [SerializeField] private TextMeshProUGUI upgradeStatusText;
@@ -20,9 +22,11 @@ public class UpgradesUI : MonoBehaviour
     [Header("Top Bar")]
     [SerializeField] private TextMeshProUGUI rpText;
     [SerializeField] private Button backButton;
+    InventorySystem inv;
 
     private void Start()
     {
+        inv = InventorySystem.instance;
         if (backButton != null) backButton.onClick.AddListener(() => SceneManager.LoadScene("MainMenu"));
         if (upgradeButton != null) upgradeButton.onClick.AddListener(OnUpgradeClick);
         StartCoroutine(DelayedRefresh());
@@ -47,22 +51,30 @@ public class UpgradesUI : MonoBehaviour
         if (batteryTimerText != null) batteryTimerText.text = $"{gs.ExploreTime}s explore time";
 
         // Material counts
-        int iron = gs.GetAtoms("Fe");
-        int copper = gs.GetAtoms("Cu");
+        int iron = inv == null ? 0 : inv.GetAmount("Iron");
+        int copper = inv == null ? 0 : inv.GetAmount("Copper");
+        int sodium = inv == null ? 0 : inv.GetAmount("Sodium");
 
         if (ironCountText != null) ironCountText.text = $"{iron}";
         if (copperCountText != null) copperCountText.text = $"{copper}";
+        if (sodiumCountText != null) sodiumCountText.text = $"{sodium}";
+
 
         // Requirement colors (green if enough, red if not)
         if (ironReqText != null)
         {
-            ironReqText.text = $"/ 5 Fe";
-            ironReqText.color = iron >= 5 ? new Color(0.06f, 0.73f, 0.51f) : new Color(0.86f, 0.15f, 0.15f);
+            ironReqText.text = $"/ 10 Fe";
+            ironReqText.color = iron >= 10 ? new Color(0.06f, 0.73f, 0.51f) : new Color(0.86f, 0.15f, 0.15f);
         }
         if (copperReqText != null)
         {
-            copperReqText.text = $"/ 10 Cu";
-            copperReqText.color = copper >= 10 ? new Color(0.06f, 0.73f, 0.51f) : new Color(0.86f, 0.15f, 0.15f);
+            copperReqText.text = $"/ 5 Cu";
+            copperReqText.color = copper >= 5 ? new Color(0.06f, 0.73f, 0.51f) : new Color(0.86f, 0.15f, 0.15f);
+        }
+        if (sodiumReqText != null)
+        {
+            sodiumReqText.text = $"/ 5 Na";
+            sodiumReqText.color = sodium >= 5 ? new Color(0.06f, 0.73f, 0.51f) : new Color(0.86f, 0.15f, 0.15f);
         }
 
         // Upgrade button

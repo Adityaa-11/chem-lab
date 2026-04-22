@@ -757,6 +757,7 @@ MonoBehaviour:
   - {fileID: 5012688344420833679, guid: 8bd0e735a9bb34b4eac78c42678bcf63, type: 3}
   - {fileID: 8803312784277167498, guid: 4ff1ad123e9bab04886095b77577a69d, type: 3}
   - {fileID: 1412711057068498259, guid: 8eb479055fb74ff4b8e6735b6d076ad1, type: 3}
+  saltPrefab: {fileID: 1412711057068498259, guid: feb47f618f71da2498ac8abf09c7288c, type: 3}
   rockCount: 150
   areaSize: {x: 45, y: 45}
   groundMask:
@@ -1947,10 +1948,11 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 2dd4394e0ab56c444a7aa805027129b7, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  maxBattery: 1000
+  maxBattery: 500
   currentBattery: 0
   drainRate: 2
-  zapCost: 60
+  zapCost: 25
+  batteryLevel: 0
 --- !u!1 &1112074561
 GameObject:
   m_ObjectHideFlags: 0
