@@ -31,4 +31,23 @@ public class InventorySystem : MonoBehaviour
 
         Debug.Log(elementName + " + " + amount);
     }
+    public void RemoveElement(string elementName, int amount)
+    {
+        if (!elements.ContainsKey(elementName))
+        {
+            elements[elementName] = 0;
+        }
+        if (amount > elements[elementName])
+        {
+            return;
+        }
+        elements[elementName] -= amount;
+    }
+    public int GetAmount(string elementName)
+    {
+        if (elements == null)
+            return 0;
+
+        return elements.TryGetValue(elementName, out int value) ? value : 0;
+    }
 }
