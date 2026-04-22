@@ -119,4 +119,14 @@ public class GameState : MonoBehaviour
     {
         return batteryLevel;        
     }
+    // ======================== ITEM DISCOVERY ========================
+
+    private HashSet<string> discoveredItems = new HashSet<string>();
+
+    public bool IsItemDiscovered(string itemName) => discoveredItems.Contains(itemName);
+
+    public void DiscoverItem(string itemName)
+    {
+        discoveredItems.Add(itemName);
+    }
 }
