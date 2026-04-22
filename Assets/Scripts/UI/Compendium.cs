@@ -73,8 +73,9 @@ public class Compendium : MonoBehaviour
 
             foreach (var item in biomeGroups[biome])
             {
-                bool discovered = GameState.Instance != null && GameState.Instance.IsItemDiscovered(item.itemName);
-
+                //bool discovered = GameState.Instance != null && GameState.Instance.IsItemDiscovered(item.itemName);
+                bool discovered = true;
+                
                 var card = Instantiate(cardPrefab, cardParent);
                 card.SetActive(true);
                 var img = card.GetComponent<Image>();

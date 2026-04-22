@@ -169,26 +169,71 @@ public class BuildCompendium
         public int[] elemAmts;
     }
 
-    static ItemDef[] itemDefs = new ItemDef[]
-    {
-        // CAVERNS
-        new ItemDef { name="Rock", biome="Caverns",
-            desc="A dense mineral formation found deep in cave walls. Rich in metallic elements deposited over millions of years.",
-            elemSyms=new[]{"Fe","Al"}, elemAmts=new[]{3,2} },
-        new ItemDef { name="Salt Crystal", biome="Caverns",
-            desc="Crystalline salt deposits formed by the evaporation of ancient underground water sources. Contains trace metals from the surrounding rock.",
-            elemSyms=new[]{"Cu","Sn"}, elemAmts=new[]{2,1} },
+static ItemDef[] itemDefs = new ItemDef[]
+{
+    // ===================== CAVERNS =====================
 
-        // FOREST
-        new ItemDef { name="Tree", biome="Forest",
-            desc="A living tree absorbing carbon dioxide and releasing oxygen. The trunk and leaves are rich in organic elements.",
-            elemSyms=new[]{"C","O","H"}, elemAmts=new[]{4,3,2} },
-        new ItemDef { name="Burnt Tree", biome="Forest",
-            desc="The charred remains of a tree after a forest fire. The combustion process has concentrated carbon in the blackened wood.",
-            elemSyms=new[]{"C","N"}, elemAmts=new[]{6,1} },
-        new ItemDef { name="Mushroom", biome="Forest",
-            desc="A forest floor fungus that breaks down organic matter. Mushrooms are nitrogen-rich decomposers essential to the ecosystem.",
-            elemSyms=new[]{"N","H","C"}, elemAmts=new[]{3,2,1} },
+    new ItemDef
+    {
+        name = "Rock",
+        biome = "Caverns",
+        desc = "A dense mineral formation found deep in cave walls. Rich in metallic elements deposited over millions of years.",
+
+        elemSyms = new[]{"Silicon","Calcium","Iron","Aluminum","Sulfur","Copper","Gold","Tin"},
+        elemAmts = new[]{3,2,2,2,1,1,1,1}
+    },
+
+    new ItemDef
+    {
+        name = "Salt Crystal",
+        biome = "Caverns",
+        desc = "Crystalline salt deposits formed by evaporation of ancient underground water sources.",
+
+        elemSyms = new[]{"Sodium","Chlorine","Magnesium","Calcium","Potassium"},
+        elemAmts = new[]{4,3,2,2,1}
+    },
+
+    // ===================== FOREST =====================
+
+    new ItemDef
+    {
+        name = "Tree",
+        biome = "Forest",
+        desc = "A living tree absorbing carbon dioxide and releasing oxygen. Rich in organic compounds.",
+
+        elemSyms = new[]{"Carbon","Oxygen","Hydrogen","Nitrogen","Iron","Zinc","Magnesium","Copper"},
+        elemAmts = new[]{4,3,2,1,1,1,1,1}
+    },
+
+    new ItemDef
+    {
+        name = "Burnt Tree",
+        biome = "Forest",
+        desc = "Charred remains of a tree after fire, leaving behind concentrated carbon.",
+
+        elemSyms = new[]{"Carbon","Oxygen","Calcium","Potassium","Magnesium"},
+        elemAmts = new[]{6,2,1,1,1}
+    },
+
+    new ItemDef
+    {
+        name = "Mushroom",
+        biome = "Forest",
+        desc = "A decomposer fungus rich in nitrogen and organic compounds.",
+
+        elemSyms = new[]{"Carbon","Oxygen","Nitrogen","Phosphorus","Potassium","Hydrogen"},
+        elemAmts = new[]{4,3,2,1,1,2}
+    },
+
+    new ItemDef
+    {
+        name = "Water",
+        biome = "Forest",
+        desc = "A building block of life, Consisting of Hydrogen and Oxygen.",
+
+        elemSyms = new[]{"Hydrogen","Oxygen"},
+        elemAmts = new[]{1,2}
+    },
     };
 
     static void CreateItemAssets()
