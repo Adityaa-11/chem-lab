@@ -5,7 +5,21 @@ using System.Collections.Generic;
 public class Chemist : MonoBehaviour
 {
     public int rpReward = 1;
-
+    static readonly string[] allowedElements =
+    {
+        "Hydrogen",
+        "Carbon",
+        "Nitrogen",
+        "Oxygen",
+        "Iron",
+        "Copper",
+        "Tin",
+        "Aluminum",
+        "Silicon",
+        "Calcium",
+        "Sulfur",
+        "Gold"
+    };
     public void Talk()
     {
         var gs = GameState.Instance;
@@ -15,47 +29,59 @@ public class Chemist : MonoBehaviour
             return;
         }
 
-        string biome = BiomeForCurrentScene();
-        var pick = PickElementForBiome(gs.AllElements, biome);
+        var pick = PickAllowedElement(gs.AllElements);
 
         if (pick == null)
         {
             DialogUI.Show("The Chemist",
-                "Nothing new I can teach you in this place right now. Explore a different world.");
+                "Nothing new I can teach you right now.");
             return;
         }
 
-        string title = $"The Chemist on {pick.elementName} ({pick.symbol})";
-        string body = $"Atomic number {pick.atomicNumber}. Shells: {pick.shellCount}. Valence: {pick.valenceElectrons}.\n\n{pick.description}";
+        QuizQuestion currentQuestion = ElementQuizGenerator.GenerateQuestion(pick);
 
-        if (gs.CanResearch(pick.symbol))
-            body += "\n\n<i>You've seen enough of this in the wild to add it to your research tree.</i>";
+        string title = $"Chemist Quiz";
+        string body = currentQuestion.question;
 
-        gs.AddRP(rpReward);
-        DialogUI.Show(title, body);
-    }
+        DialogUI.Show(title, body, OnAnswerSubmitted);
 
-    static string BiomeForCurrentScene()
-    {
-        string name = SceneManager.GetActiveScene().name;
-        if (name.Contains("Cave")) return "Caverns";
-        if (name.Contains("Forest")) return "Forest";
-        if (name.Contains("Waste")) return "Wasteland";
-        return "Forest";
-    }
-
-    static ElementData PickElementForBiome(ElementData[] all, string biome)
-    {
-        var matches = new List<ElementData>();
-        foreach (var e in all)
+        void OnAnswerSubmitted(string playerAnswer)
         {
-            if (e == null || e.foundInBiomes == null) continue;
-            foreach (var b in e.foundInBiomes)
+            if (playerAnswer.Trim().ToLower() ==
+                currentQuestion.correctAnswer.ToLower())
             {
-                if (b == biome) { matches.Add(e); break; }
+                gs.AddRP(1);
+                DialogUI.Show("Correct!", "You have gained one research point.");
+            }
+            else
+            {
+                DialogUI.Show("Incorrect",
+                    $"Correct answer: {currentQuestion.correctAnswer}");
             }
         }
-        if (matches.Count == 0) return null;
-        return matches[Random.Range(0, matches.Count)];
+    }
+
+    static ElementData PickAllowedElement(ElementData[] all)
+    {
+        List<ElementData> valid = new List<ElementData>();
+
+        foreach (var e in all)
+        {
+            if (e == null) continue;
+
+            foreach (var name in allowedElements)
+            {
+                if (e.elementName == name)
+                {
+                    valid.Add(e);
+                    break;
+                }
+            }
+        }
+
+        if (valid.Count == 0)
+            return null;
+
+        return valid[Random.Range(0, valid.Count)];
     }
 }

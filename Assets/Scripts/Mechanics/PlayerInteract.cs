@@ -12,6 +12,8 @@ public class PlayerInteract : MonoBehaviour
 
     void Update()
     {
+        if (DialogUI.IsOpen)
+            return;
         if (!Input.GetMouseButtonDown(0))
             return;
 

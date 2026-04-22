@@ -2,6 +2,7 @@ using UnityEngine;
 using UnityEngine.UI;
 using UnityEngine.EventSystems;
 using TMPro;
+using System;
 
 public class DialogUI : MonoBehaviour
 {
@@ -10,6 +11,11 @@ public class DialogUI : MonoBehaviour
     GameObject overlay;
     TextMeshProUGUI titleText;
     TextMeshProUGUI bodyText;
+    TextMeshProUGUI submitButtonText;
+    TMP_InputField inputField;
+    Button submitButton;
+    Action<string> onSubmitCallback;
+    public static bool IsOpen => instance != null && instance.overlay.activeSelf;
 
     public static void Show(string title, string body)
     {
@@ -18,11 +24,36 @@ public class DialogUI : MonoBehaviour
         instance.bodyText.text = body;
         instance.overlay.SetActive(true);
 
+        instance.inputField.gameObject.SetActive(false);
+        instance.submitButton.gameObject.SetActive(false);
+
         Time.timeScale = 0f;
         Cursor.lockState = CursorLockMode.None;
         Cursor.visible = true;
     }
+    public static void Show(string title, string body, Action<string> onSubmit)
+    {
+        EnsureInstance();
 
+        instance.titleText.text = title;
+        instance.bodyText.text = body;
+        instance.overlay.SetActive(true);
+
+        instance.inputField.gameObject.SetActive(true);
+        instance.submitButton.gameObject.SetActive(true);
+
+        instance.submitButtonText.text = "Submit";
+        instance.submitButton.onClick.RemoveAllListeners();
+        instance.submitButton.onClick.AddListener(instance.SubmitAnswer);
+
+        instance.inputField.text = "";
+        instance.onSubmitCallback = onSubmit;
+        EventSystem.current.SetSelectedGameObject(null);
+
+        Time.timeScale = 0f;
+        Cursor.lockState = CursorLockMode.None;
+        Cursor.visible = true;
+    }
     public void Hide()
     {
         overlay.SetActive(false);
@@ -30,7 +61,20 @@ public class DialogUI : MonoBehaviour
         Cursor.lockState = CursorLockMode.Locked;
         Cursor.visible = false;
     }
+    void SubmitAnswer()
+    {
+        if (onSubmitCallback == null) return;
 
+        string answer = inputField.text;
+
+        inputField.gameObject.SetActive(false);
+
+        onSubmitCallback.Invoke(answer);
+
+        submitButtonText.text = "Close";
+        submitButton.onClick.RemoveAllListeners();
+        submitButton.onClick.AddListener(Hide);
+    }
     static void EnsureInstance()
     {
         if (instance != null) return;
@@ -119,6 +163,65 @@ public class DialogUI : MonoBehaviour
         btnTxt.fontStyle = FontStyles.Bold;
         btnTxt.color = new Color(0.04f, 0.055f, 0.09f);
         Stretch(btnTxtGO);
+
+        // INPUT FIELD
+        var inputGO = MakeRT("InputField", panel.transform);
+        var inputImg = inputGO.AddComponent<Image>();
+        inputImg.color = Color.white;
+
+        inputField = inputGO.AddComponent<TMP_InputField>();
+
+        var inputRT = inputGO.GetComponent<RectTransform>();
+        inputRT.anchorMin = new Vector2(0.5f, 0);
+        inputRT.anchorMax = new Vector2(0.5f, 0);
+        inputRT.pivot = new Vector2(0.5f, 0);
+        inputRT.sizeDelta = new Vector2(420, 40);
+        inputRT.anchoredPosition = new Vector2(0, 80);
+
+        // TEXT inside input
+        var textGO = MakeRT("Text", inputGO.transform);
+        var textTMP = textGO.AddComponent<TextMeshProUGUI>();
+        textTMP.fontSize = 18;
+        textTMP.color = Color.black;
+        Stretch(textGO);
+
+        inputField.textComponent = textTMP;
+
+        // PLACEHOLDER
+        var phGO = MakeRT("Placeholder", inputGO.transform);
+        var phTMP = phGO.AddComponent<TextMeshProUGUI>();
+        phTMP.text = "Type answer here...";
+        phTMP.fontSize = 18;
+        phTMP.color = new Color(0.6f,0.6f,0.6f);
+        Stretch(phGO);
+
+        inputField.placeholder = phTMP;
+
+        // SUBMIT BUTTON
+        var submitGO = MakeRT("SubmitButton", panel.transform);
+        var submitImg = submitGO.AddComponent<Image>();
+        submitImg.color = new Color(0.3f, 0.9f, 0.3f);
+
+        submitButton = submitGO.AddComponent<Button>();
+        submitButton.onClick.AddListener(SubmitAnswer);
+
+        var submitRT = submitGO.GetComponent<RectTransform>();
+        submitRT.anchorMin = submitRT.anchorMax = new Vector2(0.5f, 0);
+        submitRT.pivot = new Vector2(0.5f, 0);
+        submitRT.sizeDelta = new Vector2(180, 42);
+        submitRT.anchoredPosition = new Vector2(0, 30);
+
+        var submitTxtGO = MakeRT("Text", submitGO.transform);
+        submitButtonText = submitTxtGO.AddComponent<TextMeshProUGUI>();
+        submitButtonText.text = "Submit";
+        submitButtonText.fontSize = 15;
+        submitButtonText.alignment = TextAlignmentOptions.Center;
+        submitButtonText.fontStyle = FontStyles.Bold;
+        submitButtonText.color = Color.black;
+        Stretch(submitTxtGO);
+
+        inputField.gameObject.SetActive(false);
+        submitButton.gameObject.SetActive(false);
 
         overlay.SetActive(false);
     }
